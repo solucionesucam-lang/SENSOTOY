@@ -9,5 +9,5 @@
 // NUNCA pongas aquí la clave "secret" ni la "service_role":
 // saltan toda la seguridad y quedarían visibles en GitHub.
 // =====================================================================
-export const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-export const SUPABASE_KEY = 'PEGA-AQUI-LA-CLAVE-PUBLICA';
+export const SUPABASE_URL = 'https://supabase.com/dashboard/project/qzfiingwkfedyhdpmatl/settings/api-keys';
+export const SUPABASE_KEY = 'sb_publishable_F7ofw0lRScvjX3wFXBJmyg_DGFP2usl';
