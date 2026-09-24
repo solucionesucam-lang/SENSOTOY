@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+<title>Sensotoys · Catálogo</title>
+</head>
+<body>
+<main class="wrap">
+  <h1>Catálogo</h1>
+  <p class="muted">Filtra por categoría. Cada ficha indica color, textura, tamaño y unidades disponibles.</p>
+  <div class="opciones" id="filtros"></div>
+  <div class="grid" id="lista"><p class="cargando">Cargando…</p></div>
+</main>
+<script type="module">
+import { pintarMarco, tarjetaProducto, param, esc } from './js/ui.js';
+import { categorias, productos } from './js/datos.js';
+
+await pintarMarco();
+const filtro = param('categoria') || 'todos';
+try {
+  const [cats, prods] = await Promise.all([categorias(), productos()]);
+  const filtros = [['todos', 'Todos'], ...cats.map((c) => [c.slug, c.nombre]), ['limitadas', 'Ediciones limitadas']];
+  document.getElementById('filtros').innerHTML = filtros.map(([slug, nombre]) =>
+    `<a class="pill ${slug === filtro ? 'on' : ''}" href="catalogo.html?categoria=${slug}">${esc(nombre)}</a>`).join('');
+
+  const lista = prods.filter((p) => filtro === 'todos'
+    || (filtro === 'limitadas' ? p.es_edicion_limitada : p.categorias.slug === filtro));
+  document.getElementById('lista').innerHTML = lista.length
+    ? lista.map(tarjetaProducto).join('')
+    : '<p class="muted">No hay productos en esta categoría.</p>';
+} catch (e) {
+  document.getElementById('lista').innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
+}
+</script>
+</body>
+</html>

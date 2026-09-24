@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+<title>Sensotoys · Pedido</title>
+</head>
+<body>
+<main class="wrap" id="contenido"><p class="cargando">Cargando…</p></main>
+<script type="module">
+import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge } from './js/ui.js';
+import { pedidoPorCodigo, misPedidos } from './js/datos.js';
+
+const usuario = await pintarMarco();
+const caja = document.getElementById('contenido');
+const codigo = param('codigo');
+
+if (exigirSesion(usuario)) {
+  try { codigo ? await detalle() : await lista(); }
+  catch (e) { caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`; }
+}
+
+// Sin código en la URL: lista de "Mis pedidos"
+async function lista() {
+  const pedidos = await misPedidos();
+  caja.innerHTML = `<h1>Mis pedidos</h1>
+    ${pedidos.length === 0 ? '<p class="muted">Todavía no tienes pedidos.</p>' : `
+    <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
+      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${p.codigo}">${p.codigo}</a></td><td>${fecha(p.creado_en)}</td>
+        <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')}
+    </tbody></table></div>`}`;
+}
+
+// Con código: detalle de un pedido (RLS impide ver pedidos ajenos)
+async function detalle() {
+  const p = await pedidoPorCodigo(codigo);
+  if (!p) { caja.innerHTML = '<h1>Pedido no encontrado</h1><p class="muted">No existe o no es tuyo.</p>'; return; }
+  const pago = p.pagos[0];
+  const rechazado = pago?.resultado === 'rechazado';
+  caja.innerHTML = `
+    <div class="split">
+      <div>
+        <h1>${rechazado ? 'Pago rechazado' : 'Pedido registrado'}</h1>
+        <p class="lead">${rechazado
+          ? 'La tarjeta de prueba ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.'
+          : pago?.resultado === 'pendiente'
+            ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
+            : 'El pago se ha validado en el entorno de pruebas. No se ha realizado ningún cobro real.'}</p>
+        <div class="card scroll" style="margin-top:20px"><table>
+          <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
+          ${p.lineas_pedido.map((l) => `<tr><td>${esc(l.nombre_producto)}<div class="small muted">${esc(l.descripcion_variante)}</div></td>
+            <td>${l.cantidad}</td><td>${euros(l.precio_unitario)}</td><td>${euros(l.importe)}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="card pad sum">
+        <div class="small muted">Número de pedido</div>
+        <div style="font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:700">${esc(p.codigo)}</div>
+        <div><span>Estado</span>${estadoBadge(p.estado)}</div>
+        <div><span>Fecha</span><span>${fecha(p.creado_en)}</span></div>
+        <div><span>Subtotal</span><span>${euros(p.subtotal)}</span></div>
+        ${Number(p.descuento) ? `<div><span>Descuento (${esc(p.cupon_codigo)})</span><span>−${euros(p.descuento)}</span></div>` : ''}
+        <div><span>Base imponible</span><span>${euros(p.base_imponible)}</span></div>
+        <div><span>IVA (21 %)</span><span>${euros(p.iva)}</span></div>
+        <div><span>Envío</span><span>${Number(p.gastos_envio) ? euros(p.gastos_envio) : 'Gratis'}</span></div>
+        <div class="total"><span>Total</span><span>${euros(p.total)}</span></div>
+        <div><span>Pago</span><span>${pago ? (pago.metodo === 'tarjeta' ? `Tarjeta ···· ${pago.ultimos4}` : 'Contra reembolso') + ' · ' + pago.resultado : '—'}</span></div>
+        <div class="small muted" style="display:block;margin-top:8px">Envío a: ${esc(p.envio_nombre)}, ${esc(p.envio_direccion)}, ${esc(p.envio_cp)} ${esc(p.envio_ciudad)} (${esc(p.envio_provincia)})</div>
+      </div>
+    </div>
+    <div class="opciones" style="margin-top:26px">
+      <a class="btn btn-primary" href="catalogo.html">Seguir comprando</a>
+      <a class="btn btn-ghost" href="soporte.html?pedido=${p.id}">Abrir una incidencia</a>
+      <a class="btn btn-ghost" href="pedido.html">Mis pedidos</a>
+    </div>`;
+}
+</script>
+</body>
+</html>
