@@ -112,16 +112,7 @@ export function exigirSesion(usuario) {
 }
 
 // Tarjeta de producto para catálogo e inicio
-export function tarjetaProducto(p) {
-  const v = p.variantes;
-  const desde = Math.min(...v.map((x) => x.precio));
-  const stock = v.reduce((a, x) => a + x.stock, 0);
-  const precios = new Set(v.map((x) => x.precio)).size;
-  return `<a class="card" href="producto.html?slug=${encodeURIComponent(p.slug)}">
-    <div class="photo" style="height:160px;background:${v[0]?.color_hex || '#eee'}">[Foto]</div>
-    <div class="row"><span class="tag">${esc(p.categorias.nombre)}</span>${p.es_edicion_limitada ? '<span class="badge">Limitada</span>' : ''}</div>
-    <div class="pname">${esc(p.nombre)}</div>
-    <div class="row"><span>${precios > 1 ? 'desde ' : ''}${euros(desde)}</span>
-      <span class="small muted">${p.es_edicion_limitada ? `Quedan ${stock} de ${p.unidades_edicion}` : `${stock} uds.`}</span></div>
-  </a>`;
-}
+export function tarjetaProducto(p){const v=p.variantes;
+  const desde=Math.min(...v.map((x)=>x.precio));
+  const stock=v.reduce((a,x)=>a+x.stock,0);
+  const precios=new Set(v.map((x)=>x.precio)).size;return `<a class="card" href="producto.html?slug=${encodeURIComponent(p.slug)}"><div class="photo" style="height:160px;background:${v[0]?.color_hex||'#eee'}"><img src="img/productos/${encodeURIComponent(p.slug)}.png" alt="${esc(p.nombre)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"></div><div class="row"><span class="tag">${esc(p.categorias.nombre)}</span>${p.es_edicion_limitada?'<span class="badge">Limitada</span>':''}</div><div class="pname">${esc(p.nombre)}</div><div class="row"><span>${precios>1?'desde ':''}${euros(desde)}</span><span class="small muted">${p.es_edicion_limitada?`Quedan ${stock} de ${p.unidades_edicion}`:`${stock} uds.`}</span></div></a>`;}
