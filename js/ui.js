@@ -121,7 +121,7 @@ export function tarjetaProducto(p) {
 
   return `<a class="card" href="producto.html?slug=${encodeURIComponent(p.slug)}">
     <div class="photo" style="height:160px;background:${v[0]?.color_hex || '#eee'}">
-      <img src="${rutaImagen}" alt="${esc(p.nombre)}" loading="lazy"
+      <img src="${rutaImagen}" alt="${esc(p.descripcion)}" loading="lazy"
            style="width:100%;height:100%;object-fit:cover"
            onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))">
     </div>
@@ -131,4 +131,5 @@ export function tarjetaProducto(p) {
       <span class="small muted">${p.es_edicion_limitada ? `Quedan ${stock} de ${p.unidades_edicion}` : `${stock} uds.`}</span></div>
   </a>`;
 }
+
 

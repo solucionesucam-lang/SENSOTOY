@@ -40,7 +40,7 @@ try {
   const aurora = prods.find((p) => p.es_edicion_limitada);
   if (aurora) {
     const quedan = aurora.variantes.reduce((a, v) => a + v.stock, 0);
-    document.getElementById('kicker').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion}`;
+    document.getElementById('kicker').textContent = `${aurora.descripcion}: quedan ${quedan} de ${aurora.unidades_edicion}`;
     document.getElementById('fotoHero').innerHTML = `
     <img src="img/productos/${aurora.slug}.webp" alt="${esc(aurora.nombre)}" loading="lazy"
          style="width:100%;height:100%;object-fit:cover"

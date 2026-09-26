@@ -51,7 +51,7 @@ function pintar() {
       <a href="catalogo.html?categoria=${producto.categorias.slug}">${esc(producto.categorias.nombre)}</a> / ${esc(producto.nombre)}</div>
     <div class="split">
       <div class="photo" style="height:420px;background:${v.color_hex}">
-  <img src="img/productos/${producto.slug}.webp" alt="${esc(producto.nombre)}" loading="lazy"
+        <img src="img/productos/${producto.slug}.webp" alt="${esc(producto.descripcion)}" loading="lazy"
        style="width:100%;height:100%;object-fit:cover"
        onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto del producto pendiente]'}))">
 </div>
