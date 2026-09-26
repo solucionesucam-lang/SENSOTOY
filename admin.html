@@ -17,6 +17,7 @@ import { todosLosPedidos, eventos, incidencias, cambiarEstado } from './js/datos
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 let pedidos = [], listaEventos = [], listaIncidencias = [], seleccionado = null;
+let fCodigo = '', fEstado = '', fCliente = '';
 
 if (exigirSesion(usuario)) {
   if (usuario.rol !== 'admin') {
@@ -41,6 +42,9 @@ function pintar() {
                          .reduce((a, x) => a + Number(x.importe), 0);
   const rechazados = pedidos.flatMap((p) => p.pagos).filter((x) => x.resultado === 'rechazado').length;
   const d = pedidos.find((p) => p.id === seleccionado);
+  const c = fCodigo.toLowerCase(), q = fCliente.toLowerCase();
+  const visibles = pedidos.filter((p) => p.codigo.toLowerCase().includes(c) && (!fEstado || p.estado === fEstado)
+    && (!q || (p.perfiles?.email || '').toLowerCase().includes(q) || (p.perfiles?.nombre || '').toLowerCase().includes(q)));
 
   caja.innerHTML = `
     <div class="row" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:22px">
@@ -56,11 +60,19 @@ function pintar() {
       <div class="card pad kpi"><span class="small muted">Incidencias abiertas</span><b>${listaIncidencias.filter((i) => i.estado === 'abierta').length}</b></div>
     </div>
 
+    <div class="opciones" style="margin-bottom:14px">
+      <input id="f-codigo" placeholder="Código (PED-2026-...)" value="${esc(fCodigo)}" style="flex:1;min-width:180px">
+      <select id="f-estado" style="flex:1;min-width:180px"><option value="">Todos</option>${Object.entries(ESTADOS).map(([k, [t]]) =>
+        `<option value="${k}" ${k === fEstado ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <input id="f-cliente" placeholder="Email o nombre de cliente" value="${esc(fCliente)}" style="flex:1;min-width:180px">
+    </div>
+
     <div class="split">
       <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
-        ${pedidos.map((p) => `<tr class="clic ${p.id === seleccionado ? 'sel' : ''}" data-id="${p.id}" tabindex="0">
+        ${visibles.map((p) => `<tr class="clic ${p.id === seleccionado ? 'sel' : ''}" data-id="${p.id}" tabindex="0">
           <td><strong>${p.codigo}</strong></td><td>${esc(p.perfiles?.email)}</td><td>${fecha(p.creado_en)}</td>
-          <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')}
+          <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')
+          || '<tr><td colspan="5" class="muted">Sin resultados.</td></tr>'}
       </tbody></table></div>
       ${d ? `<div class="card pad">
         <div class="row"><h2>Detalle</h2><span class="small muted">${d.codigo}</span></div>
@@ -119,6 +131,17 @@ caja.addEventListener('click', async (e) => {
     const csv = [cab, ...filas].map((f) => f.map((x) => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     descargar('pedidos-sensotoys.csv', '\ufeff' + csv, 'text/csv');   // \ufeff: Excel abre bien las tildes
   }
+});
+caja.addEventListener('input', (e) => {
+  const { id, value, selectionStart } = e.target;
+  if (id === 'f-codigo') fCodigo = value;
+  else if (id === 'f-estado') fEstado = value;
+  else if (id === 'f-cliente') fCliente = value;
+  else return;
+  pintar();
+  const el = document.getElementById(id);
+  el.focus();
+  if (id !== 'f-estado') el.setSelectionRange(selectionStart, selectionStart);
 });
 caja.addEventListener('keydown', (e) => {
   const fila = e.target.closest('tr[data-id]');
