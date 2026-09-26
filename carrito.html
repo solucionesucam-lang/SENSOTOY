@@ -10,7 +10,7 @@
 </head>
 <body>
 <main class="wrap">
- <h1>Mi carrito de juguetesss</h1>
+ <h1>Mi carrito de juguetes</h1>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
@@ -36,7 +36,7 @@ async function cargar() {
 function pintar() {
   const carrito = leerCarrito();
   if (carrito.length === 0) {
-    caja.innerHTML = '<div class="card pad"><p>Tu carritoooo está vacío.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>';
+    caja.innerHTML = '<div class="card pad"><p>Tu carrito está vacío.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>';
     return;
   }
   let subtotal = 0;
