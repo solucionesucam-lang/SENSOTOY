@@ -59,7 +59,7 @@ async function iniciar(carrito) {
         <h2>Tu pedido</h2>
         ${carrito.map((l) => { const v = variantes.find((x) => x.id === l.variante_id);
           return `<div class="row small" style="padding:4px 0"><span>${esc(v.productos.nombre)} · ${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span><strong>${euros(v.precio * l.cantidad)}</strong></div>`; }).join('')}
-        ${campo('cupon', 'Cupón (opcional)', '', 'placeholder="BIENVENIDA10"')}
+        ${campo('cupon', 'Cupón (opcional)', '', 'placeholder="SENSOTOY10"')}
         <div class="sum" style="margin-top:6px">
           <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
           <div><span>Envío</span><span>${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
