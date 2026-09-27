@@ -83,6 +83,13 @@ export async function crearPedido({ lineas, envio, metodo, tarjeta, cupon }) {
   }));
 }
 
+export async function validarCupon(codigo, subtotal) {
+  return comprobar(await supabase.rpc('validar_cupon', {
+    p_codigo: codigo,
+    p_subtotal: subtotal
+  }));
+}
+
 // ---------- Pedidos del cliente (RLS: solo ve los suyos) ----------
 export async function misPedidos() {
   return comprobar(await supabase.from('pedidos')
