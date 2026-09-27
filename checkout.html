@@ -106,7 +106,8 @@ async function iniciar(carrito) {
             
           }
         } catch (error) {
-          mensajeCupon.textContent = 'No se ha podido validar el cupón. Inténtalo de nuevo.';
+          console.error('Error al validar el cupón:', error);
+          mensajeCupon.textContent = error.message;
           mensajeCupon.style.color = '#b42318';
         } finally {
           botonValidarCupon.disabled = false;
