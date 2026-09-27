@@ -131,3 +131,8 @@ export async function resumenVentas() {
 export async function ventasPorProducto() {
   return comprobar(await supabase.from('v_ventas_por_producto').select('*').order('importe', { ascending: false }));
 }
+export async function stockBajo() {
+  return comprobar(await supabase.from('variantes')
+    .select('id, color, talla, stock, productos ( nombre, es_edicion_limitada, unidades_edicion )')
+    .lte('stock', 5).eq('activo', true).order('stock'));
+}
