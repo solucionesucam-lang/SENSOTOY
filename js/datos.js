@@ -118,3 +118,9 @@ export async function incidencias() {
 export async function cambiarEstado(pedidoId, estado) {
   comprobar(await supabase.rpc('cambiar_estado_pedido', { p_pedido_id: pedidoId, p_estado: estado }));
 }
+export async function resumenVentas() {
+  return comprobar(await supabase.from('v_resumen_ventas').select('*').single());
+}
+export async function ventasPorProducto() {
+  return comprobar(await supabase.from('v_ventas_por_producto').select('*').order('importe', { ascending: false }));
+}
