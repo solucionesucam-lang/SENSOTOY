@@ -12,11 +12,12 @@
 <main class="wrap" id="contenido"><p class="cargando">Cargando…</p></main>
 <script type="module">
 import { pintarMarco, exigirSesion, euros, esc, fecha, estadoBadge, ESTADOS, aviso } from './js/ui.js';
-import { todosLosPedidos, eventos, incidencias, cambiarEstado } from './js/datos.js';
+import { todosLosPedidos, eventos, incidencias, cambiarEstado, resumenVentas, ventasPorProducto } from './js/datos.js';
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 let pedidos = [], listaEventos = [], listaIncidencias = [], seleccionado = null;
+let resumen = null, ranking = [];
 let fCodigo = '', fEstado = '', fCliente = '';
 
 if (exigirSesion(usuario)) {
@@ -29,7 +30,7 @@ if (exigirSesion(usuario)) {
 
 async function cargar() {
   try {
-    [pedidos, listaEventos, listaIncidencias] = await Promise.all([todosLosPedidos(), eventos(), incidencias()]);
+    [pedidos, listaEventos, listaIncidencias, resumen, ranking] = await Promise.all([todosLosPedidos(), eventos(), incidencias(), resumenVentas(), ventasPorProducto()]);
     if (!seleccionado && pedidos.length) seleccionado = pedidos[0].id;
     pintar();
   } catch (e) {
@@ -59,6 +60,18 @@ function pintar() {
       <div class="card pad kpi"><span class="small muted">Pagos rechazados</span><b>${rechazados}</b></div>
       <div class="card pad kpi"><span class="small muted">Incidencias abiertas</span><b>${listaIncidencias.filter((i) => i.estado === 'abierta').length}</b></div>
     </div>
+    <div class="kpis">
+      <div class="card pad kpi"><span class="small muted">Pedidos (pagos aceptados)</span><b>${resumen.pedidos}</b></div>
+      <div class="card pad kpi"><span class="small muted">Facturación</span><b>${euros(resumen.facturacion)}</b></div>
+      <div class="card pad kpi"><span class="small muted">Ticket medio</span><b>${euros(resumen.ticket_medio)}</b></div>
+      <div class="card pad kpi"><span class="small muted">% Pagos rechazados</span><b>${resumen.pct_rechazados}%</b></div>
+    </div>
+
+    <h2 style="margin-top:36px">Productos más vendidos</h2>
+    <div class="card scroll"><table><thead><tr><th>Producto</th><th>Unidades</th><th>Importe</th></tr></thead><tbody>
+      ${ranking.map((r) => `<tr><td>${esc(r.producto)}</td><td>${r.unidades}</td><td>${euros(r.importe)}</td></tr>`).join('')
+        || '<tr><td colspan="3" class="muted">Sin ventas todavía.</td></tr>'}
+    </tbody></table></div>
 
     <div class="opciones" style="margin-bottom:14px">
       <input id="f-codigo" placeholder="Código (PED-2026-...)" value="${esc(fCodigo)}" style="flex:1;min-width:180px">
