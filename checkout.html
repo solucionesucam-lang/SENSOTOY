@@ -15,7 +15,7 @@
 </main>
 <script type="module">
 import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, resumenImportes } from './js/ui.js';
-import { variantesPorId, crearPedido, registrarEvento } from './js/datos.js';
+import { variantesPorId, crearPedido, registrarEvento, validarCupon } from './js/datos.js';
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
