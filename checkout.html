@@ -59,13 +59,23 @@ async function iniciar(carrito) {
         <h2>Tu pedido</h2>
         ${carrito.map((l) => { const v = variantes.find((x) => x.id === l.variante_id);
           return `<div class="row small" style="padding:4px 0"><span>${esc(v.productos.nombre)} · ${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span><strong>${euros(v.precio * l.cantidad)}</strong></div>`; }).join('')}
-        ${campo('cupon', 'Cupón (opcional)', '', 'placeholder="SENSOTOY10"')}
+       
+      <div>
+        <label for="cupon">Cupón (opcional)</label>
+        <div style="display:flex;gap:8px">
+          <input id="cupon" name="cupon" placeholder="SENSOTOY10">
+          <button type="button" id="validar-cupon" class="btn">Validar</button>
+        </div>
+        <div id="mensaje-cupon" class="small" style="margin-top:6px"></div>
+        <div class="err" id="err-cupon"></div>
+      </div>
+      
         <div class="sum" style="margin-top:6px">
           <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
           <div><span>Envío</span><span>${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
           <div class="total"><span>Total estimado</span><span>${euros(r.total)}</span></div>
         </div>
-        <p class="small muted">El descuento del cupón y el total definitivo los calcula la base de datos al confirmar.</p>
+        <p class="small muted">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
       </div>
       <div id="error-general" class="error-caja" style="display:none;margin-top:14px"></div>
       <button class="btn btn-primary" id="pagar" style="width:100%;margin-top:14px">Confirmar y pagar (simulado)</button>
@@ -74,6 +84,35 @@ async function iniciar(carrito) {
   </form>`;
 
   const form = document.getElementById('form');
+      const botonValidarCupon = document.getElementById('validar-cupon');
+      const mensajeCupon = document.getElementById('mensaje-cupon');
+      const inputCupon = document.getElementById('cupon');
+     
+  
+      botonValidarCupon.addEventListener('click', async () => {
+        const codigo = inputCupon.value.trim();
+        botonValidarCupon.disabled = true;
+        botonValidarCupon.textContent = 'Validando…';
+        mensajeCupon.textContent = '';
+    
+        try {
+          const resultado = await validarCupon(codigo, subtotal);
+    
+          mensajeCupon.textContent = resultado.mensaje;
+          mensajeCupon.style.color = resultado.valido ? '#18794e' : '#b42318';
+    
+          if (resultado.valido) {
+            inputCupon.value = resultado.codigo;
+            
+          }
+        } catch (error) {
+          mensajeCupon.textContent = 'No se ha podido validar el cupón. Inténtalo de nuevo.';
+          mensajeCupon.style.color = '#b42318';
+        } finally {
+          botonValidarCupon.disabled = false;
+          botonValidarCupon.textContent = 'Validar';
+        }
+  });
   form.addEventListener('change', (e) => {
     if (e.target.name !== 'metodo') return;
     form.querySelectorAll('label.chip').forEach((l) => l.classList.toggle('on', l.querySelector('input').checked));
