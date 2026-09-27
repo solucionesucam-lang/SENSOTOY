@@ -84,7 +84,7 @@ export async function crearPedido({ lineas, envio, metodo, tarjeta, cupon }) {
 }
 
 export async function validarCupon(codigo, subtotal) {
-  return comprobar(await supabase.rpc('validar_cupon', {
+  return comprobar(await supabase.rpc('validarr_cuponn', {
     p_codigo: codigo,
     p_subtotal: subtotal
   }));
