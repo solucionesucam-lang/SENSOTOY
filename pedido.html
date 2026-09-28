@@ -45,10 +45,10 @@ async function detalle() {
       <div>
         <h1>${rechazado ? 'Pago rechazado' : 'Pedido registrado'}</h1>
         <p class="lead">${rechazado
-          ? 'La tarjeta de prueba ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.'
+          ? 'La tarjeta ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.'
           : pago?.resultado === 'pendiente'
             ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
-            : 'El pago se ha validado en el entorno de pruebas. No se ha realizado ningún cobro real.'}</p>
+            : 'El pago se ha validado. No se ha realizado ningún cobro real.'}</p>
         <div class="card scroll" style="margin-top:20px"><table>
           <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
           ${p.lineas_pedido.map((l) => `<tr><td>${esc(l.nombre_producto)}<div class="small muted">${esc(l.descripcion_variante)}</div></td>

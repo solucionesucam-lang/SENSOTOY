@@ -46,10 +46,10 @@ async function iniciar(carrito) {
       </div>
       <div class="card pad"><div class="row"><h2>Métodos de pago</h2><span class="badge">Método recomendado</span></div>
         <div class="opciones">
-          <label class="chip on" style="margin:0"><input type="radio" name="metodo" value="tarjeta" checked style="width:auto"> Tarjeta de prueba</label>
+          <label class="chip on" style="margin:0"><input type="radio" name="metodo" value="tarjeta" checked style="width:auto"> Tarjeta</label>
           <label class="chip" style="margin:0"><input type="radio" name="metodo" value="contrareembolso" style="width:auto"> Contra reembolso</label>
         </div>
-        <div id="bloque-tarjeta">${campo('tarjeta', 'Número de tarjeta de prueba', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
+        <div id="bloque-tarjeta">${campo('tarjeta', 'Número de tarjeta', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
           <p class="small muted">Solo se guardan los 4 últimos dígitos.</p></div>
       </div>
     </div>

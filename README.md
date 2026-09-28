@@ -80,8 +80,7 @@ Se guardan en la tabla `eventos` y se consultan o exportan (JSON y CSV) desde el
 ## Limitaciones conocidas
 
 - El pago es simulado; no hay pasarela real.
-- El carrito se guarda en el navegador hasta la compra (el evento `cart.item_added` sí queda en la base de datos).
+- El carrito se guarda en el navegador, por usuario, hasta la compra (el evento `cart.item_added` sí queda en la base de datos).
 - Cualquiera puede registrar eventos de navegación, así que podrían inflarse artificialmente.
 - El desglose de IVA se aplica solo a los productos; el envío se muestra sin desglose.
 - El plan gratuito de Supabase pausa el proyecto tras una semana sin actividad.
-- Las fotos de producto son marcadores de posición.

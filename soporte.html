@@ -51,7 +51,7 @@ if (exigirSesion(usuario)) {
     if (!motivo || mensaje.length < 10) return;
     try {
       await crearIncidencia({ motivo, mensaje, pedidoId: document.getElementById('pedido').value || null });
-      caja.innerHTML = '<div class="card pad"><h2>Solicitud registrada</h2><p class="muted">Te responderemos lo antes posible (simulado).</p><a class="btn btn-primary" href="index.html">Volver al inicio</a></div>';
+      caja.innerHTML = '<div class="card pad"><h2>Solicitud registrada</h2><p class="muted">Te responderemos lo antes posible.</p><a class="btn btn-primary" href="index.html">Volver al inicio</a></div>';
       aviso('Incidencia guardada');
     } catch (err) {
       const box = document.getElementById('error-general');
