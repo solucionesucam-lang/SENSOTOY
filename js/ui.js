@@ -8,7 +8,7 @@ export const ENVIO = 3.95, ENVIO_GRATIS = 45, MAX_POR_PRODUCTO = 3;
 
 export const ESTADOS = {
   creado:      ['Creado',                    '#EDE7F4', '#463A66'],
-  pagado:      ['Pagado (simulado)',         '#DCEBE5', '#1F5247'],
+  pagado:      ['Pagado',                    '#DCEBE5', '#1F5247'],
   preparacion: ['Pendiente de preparación',  '#F6E6C8', '#6B4C12'],
   enviado:     ['Enviado',                   '#DCE7F4', '#25456B'],
   cancelado:   ['Cancelado',                 '#E8E2DB', '#4A4039'],
@@ -114,11 +114,26 @@ export async function pintarMarco() {
     </div></footer>`);
 
   pintarContadorCarrito();
+  pintarBannerCookies();
   document.getElementById('salir')?.addEventListener('click', async () => {
     await cerrarSesion();
     location.href = 'index.html';
   });
   return usuario;
+}
+
+// Aviso de cookies: se muestra hasta que la persona lo acepta
+function pintarBannerCookies() {
+  try { if (localStorage.getItem('sensotoys_cookies_ok') === '1') return; } catch {}
+  const div = document.createElement('div');
+  div.id = 'cookies'; div.className = 'cookies'; div.setAttribute('role', 'region');
+  div.setAttribute('aria-label', 'Aviso de cookies');
+  div.innerHTML = '<span>Usamos almacenamiento local del navegador para recordar tu carrito y tu sesión.</span><button class="btn btn-primary" type="button">Aceptar</button>';
+  div.querySelector('button').addEventListener('click', () => {
+    try { localStorage.setItem('sensotoys_cookies_ok', '1'); } catch {}
+    div.remove();
+  });
+  document.body.append(div);
 }
 
 // Para páginas que exigen sesión: si no hay, manda al login y vuelve después
@@ -141,7 +156,7 @@ export function tarjetaProducto(p) {
   return `<a class="card" href="producto.html?slug=${encodeURIComponent(p.slug)}">
     <div class="photo" style="height:160px;background:${v[0]?.color_hex || '#eee'}">
       <img src="${rutaImagen}" alt="${esc(p.descripcion)}" loading="lazy"
-           style="width:100%;height:100%;object-fit:cover"
+           style="width:100%;height:100%;object-fit:contain"
            onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))">
     </div>
     <div class="row"><span class="tag">${esc(p.categorias.nombre)}</span>${p.es_edicion_limitada ? '<span class="badge">Limitada</span>' : ''}</div>
