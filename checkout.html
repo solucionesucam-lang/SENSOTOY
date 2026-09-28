@@ -14,7 +14,7 @@
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, resumenImportes } from './js/ui.js';
+import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, resumenImportes, ENVIO, ENVIO_GRATIS } from './js/ui.js';
 import { variantesPorId, crearPedido, registrarEvento, validarCupon } from './js/datos.js';
 
 const usuario = await pintarMarco();
@@ -71,8 +71,9 @@ async function iniciar(carrito) {
       
         <div class="sum" style="margin-top:6px">
           <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
-          <div><span>Envío</span><span>${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
-          <div class="total"><span>Total estimado</span><span>${euros(r.total)}</span></div>
+          <div id="fila-descuento" style="display:none"><span>Descuento</span><span id="importe-descuento"></span></div>
+          <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
+          <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
         </div>
         <p class="small muted">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
       </div>
@@ -86,6 +87,17 @@ async function iniciar(carrito) {
       const botonValidarCupon = document.getElementById('validar-cupon');
       const mensajeCupon = document.getElementById('mensaje-cupon');
       const inputCupon = document.getElementById('cupon');
+
+      // Misma regla que crear_pedido(): envío gratis según subtotal - descuento
+      function pintarTotales(descuento) {
+        const neto = subtotal - descuento;
+        const envio = neto >= ENVIO_GRATIS ? 0 : ENVIO;
+        document.getElementById('fila-descuento').style.display = descuento > 0 ? '' : 'none';
+        document.getElementById('importe-descuento').textContent = '−' + euros(descuento);
+        document.getElementById('importe-envio').textContent = envio ? euros(envio) : 'Gratis';
+        document.getElementById('importe-total').textContent = euros(neto + envio);
+      }
+      inputCupon.addEventListener('input', () => { pintarTotales(0); mensajeCupon.textContent = ''; });
      
   
       botonValidarCupon.addEventListener('click', async () => {
@@ -102,12 +114,13 @@ async function iniciar(carrito) {
     
           if (resultado.valido) {
             inputCupon.value = resultado.codigo;
-            
           }
+          pintarTotales(resultado.valido ? Number(resultado.descuento) : 0);
        } catch (error) {
           console.error('Error al validar el cupón:', error);
           mensajeCupon.textContent = 'No se ha podido validar el cupón. Inténtalo de nuevo.';
           mensajeCupon.style.color = '#b42318';
+          pintarTotales(0);
       } finally {
           botonValidarCupon.disabled = false;
           botonValidarCupon.textContent = 'Validar';
