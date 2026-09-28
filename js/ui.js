@@ -37,19 +37,27 @@ export function aviso(msg) {
   clearTimeout(t._h); t._h = setTimeout(() => (t.style.display = 'none'), 3000);
 }
 
-// ---------- Carrito (vive en el navegador hasta que se compra) ----------
-// Solo guarda qué variante y cuántas: el precio siempre se lee de la BD.
-export function leerCarrito() {
-  try { return JSON.parse(localStorage.getItem('sensotoys_carrito')) || []; }
-  catch { return []; }
-}
-export function guardarCarrito(lineas) {
-  localStorage.setItem('sensotoys_carrito', JSON.stringify(lineas));
-  pintarContadorCarrito();
-}
-export function unidadesEnCarrito() {
-  return leerCarrito().reduce((a, l) => a + l.cantidad, 0);
-}
+    function claveCarrito() {
+      const usuarioId = localStorage.getItem('sensotoys_usuario_id');
+      return usuarioId ? `sensotoys_carrito_${usuarioId}` : 'sensotoys_carrito_invitado';
+    }
+    
+    export function leerCarrito() {
+      try {
+        return JSON.parse(localStorage.getItem(claveCarrito())) || [];
+      } catch {
+        return [];
+      }
+    }
+    
+    export function guardarCarrito(lineas) {
+      localStorage.setItem(claveCarrito(), JSON.stringify(lineas));
+      pintarContadorCarrito();
+    }
+    
+    export function unidadesEnCarrito() {
+      return leerCarrito().reduce((a, l) => a + l.cantidad, 0);
+    }
 
 // Resumen orientativo para mostrar. El importe que vale es el que
 // calcula crear_pedido() en la base de datos.
@@ -68,6 +76,11 @@ function pintarContadorCarrito() {
 export async function pintarMarco() {
   let usuario = null;
   try { usuario = await usuarioActual(); } catch (e) { console.warn(e.message); }
+      if (usuario) {
+        localStorage.setItem('sensotoys_usuario_id', usuario.id);
+      } else {
+        localStorage.removeItem('sensotoys_usuario_id');
+      }
 
   // NUEVO: da un id al <main> de la página si no lo tiene, para que el
   // enlace "Saltar al contenido" tenga un destino al que ir.
