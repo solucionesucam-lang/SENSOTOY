@@ -14,6 +14,7 @@
     <div>
       <div class="small" style="color:var(--green);font-weight:700" id="kicker">&nbsp;</div>
       <h1 style="font-size:clamp(38px,5vw,56px)">Juguetes sensoriales que se coleccionan</h1>
+      <p style="font-family:'Fraunces',serif;font-style:italic;font-size:20px;margin:0 0 12px">Pequeñas piezas para calmar, tocar y coleccionar.</p>
       <p class="lead">Squishies y fidgets fabricados por tiradas cortas. Cada pieza indica su textura, su tamaño y cuántas unidades quedan de su edición.</p>
       <a class="btn btn-primary" href="catalogo.html">Ver catálogo</a>
       <a class="btn btn-ghost" href="catalogo.html?categoria=limitadas">Ediciones limitadas</a>
@@ -43,7 +44,7 @@ try {
     document.getElementById('kicker').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion}`;
     document.getElementById('fotoHero').innerHTML = `
     <img src="img/productos/${aurora.slug}.webp" alt="${esc(aurora.descripcion)}" loading="lazy"
-         style="width:100%;height:100%;object-fit:cover"
+         style="width:100%;height:100%;object-fit:contain"
          onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto de producto pendiente]'}))">`;
   }
 } catch (e) {

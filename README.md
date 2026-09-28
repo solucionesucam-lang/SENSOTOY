@@ -35,7 +35,7 @@ sql/              Scripts de la base de datos
 
 ## Instalación
 
-1. En Supabase > SQL Editor, ejecutar en orden `01_esquema.sql`, `02_datos_catalogo.sql`, crear los usuarios de prueba (ver abajo), `03_datos_pedidos.sql` y `04_seguridad_y_funciones.sql`.
+1. En Supabase > SQL Editor, ejecutar en orden `01_esquema.sql`, `02_datos_catalogo.sql`, crear los usuarios de prueba (ver abajo), `03_datos_pedidos.sql`, `04_seguridad_y_funciones.sql` y `06_validar_cupon.sql` (validación de cupones desde el checkout).
 2. Copiar en `config.js` la URL del proyecto y la clave **pública** (Project Settings > API Keys). Nunca la clave secret ni la service_role.
 3. Subir todo al repositorio de GitHub y activar GitHub Pages (Settings > Pages > Deploy from a branch > `main` / raíz).
 
