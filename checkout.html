@@ -97,7 +97,7 @@ async function iniciar(carrito) {
         document.getElementById('importe-envio').textContent = envio ? euros(envio) : 'Gratis';
         document.getElementById('importe-total').textContent = euros(neto + envio);
       }
-      inputCupon.addEventListener('input', () => pintarTotales(0));
+      inputCupon.addEventListener('input', () => { pintarTotales(0); mensajeCupon.textContent = ''; });
      
   
       botonValidarCupon.addEventListener('click', async () => {
