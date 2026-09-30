@@ -70,7 +70,7 @@ function pintar() {
        style="width:100%;height:100%;object-fit:cover"
        onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto del producto pendiente]'}))};this.src='img/productos/${producto.slug}.webp'">
       </div>
-</div>
+
       <div>
         ${producto.es_edicion_limitada ? `<span class="badge">Edición limitada · quedan ${stockTotal} de ${producto.unidades_edicion}</span>` : ''}
         <h1 style="margin-top:10px">${esc(producto.nombre)}</h1>
@@ -103,12 +103,7 @@ function pintar() {
         <p class="small muted">Textura: ${esc(v.textura)} · Material: ${esc(producto.material)} · Edad recomendada: desde ${producto.edad_minima} años</p>
       </div>
     </div>`;
-  // Foto por color; si no existe, la genérica; si tampoco, texto
-  const foto = document.getElementById('foto');
-  foto.onerror = () => {
-    foto.onerror = () => foto.replaceWith(Object.assign(document.createElement('span'), { textContent: '[Foto del producto pendiente]' }));
-    foto.src = `img/productos/${producto.slug}.webp`;
-  };
+
 }
 
 caja.addEventListener('click', (e) => {
