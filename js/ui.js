@@ -145,19 +145,27 @@ export function exigirSesion(usuario) {
   return true;
 }
 
+function colorSlug(color) {
+  let c = color.replace(/\s*Aurora$/i, '').trim();
+  if (c.includes('/')) {
+    return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
+  }
+  return c.split(' ')[0].toLowerCase();
+}
+
 // Tarjeta de producto para catálogo e inicio
 export function tarjetaProducto(p) {
   const v = p.variantes;
   const desde = Math.min(...v.map((x) => x.precio));
   const stock = v.reduce((a, x) => a + x.stock, 0);
   const precios = new Set(v.map((x) => x.precio)).size;
-  const rutaImagen = `img/productos/${p.slug}.webp`;
+  const rutaImagen = `img/productos/${p.slug}-${colorSlug(v[0].color)}.webp`;
 
   return `<a class="card" href="producto.html?slug=${encodeURIComponent(p.slug)}">
     <div class="photo" style="height:160px;background:${v[0]?.color_hex || '#eee'}">
       <img src="${rutaImagen}" alt="${esc(p.descripcion)}" loading="lazy"
            style="width:100%;height:100%;object-fit:contain"
-           onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))">
+           onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))};this.src='img/productos/${p.slug}.webp'">
     </div>
     <div class="row"><span class="tag">${esc(p.categorias.nombre)}</span>${p.es_edicion_limitada ? '<span class="badge">Limitada</span>' : ''}</div>
     <div class="pname">${esc(p.nombre)}</div>
@@ -165,5 +173,6 @@ export function tarjetaProducto(p) {
       <span class="small muted">${p.es_edicion_limitada ? `Quedan ${stock} de ${p.unidades_edicion}` : `${stock} uds.`}</span></div>
   </a>`;
 }
+
 
 
