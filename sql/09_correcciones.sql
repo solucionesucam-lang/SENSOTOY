@@ -309,3 +309,53 @@ begin
   update public.pedidos set estado = p_estado where id = p_pedido_id;
 end;
 $$;
+
+
+create or replace function public.validar_cupon(p_codigo text, p_subtotal numeric)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_codigo    text := upper(trim(coalesce(p_codigo, '')));
+  v_subtotal  numeric := coalesce(p_subtotal, 0);
+  v_usuario   uuid := auth.uid();
+  v_cupon     public.cupones%rowtype;
+  v_descuento numeric;
+begin
+  if v_codigo = '' then
+    return jsonb_build_object('valido', false, 'mensaje', 'Introduce un cupón.',
+                              'codigo', '', 'descuento', 0);
+  end if;
+
+  select * into v_cupon from public.cupones where codigo = v_codigo;
+  if not found or not v_cupon.activo
+     or (v_cupon.valido_hasta is not null and v_cupon.valido_hasta < current_date) then
+    return jsonb_build_object('valido', false, 'mensaje', 'El cupón no existe o ha caducado',
+                              'codigo', v_codigo, 'descuento', 0);
+  end if;
+
+  if v_subtotal < v_cupon.importe_minimo then
+    return jsonb_build_object('valido', false,
+                              'mensaje', format('El cupón exige un pedido mínimo de %s €', trim_scale(v_cupon.importe_minimo)),
+                              'codigo', v_codigo, 'descuento', 0);
+  end if;
+
+  if v_cupon.un_uso_por_cliente and v_usuario is not null
+     and public.cupon_ya_usado(v_cupon.codigo, v_usuario) then
+    return jsonb_build_object('valido', false, 'mensaje', 'Ya has usado este cupón',
+                              'codigo', v_codigo, 'descuento', 0);
+  end if;
+
+  if v_cupon.tipo = 'porcentaje' then
+    v_descuento := round(v_subtotal * v_cupon.valor / 100, 2);
+  else
+    v_descuento := least(v_cupon.valor, v_subtotal);
+  end if;
+
+  return jsonb_build_object('valido', true,
+                            'mensaje', 'Cupón aplicado: -' || replace(to_char(v_descuento, 'FM999990.00'), '.', ',') || ' €',
+                            'codigo', v_cupon.codigo, 'descuento', v_descuento);
+end;
+$$;
