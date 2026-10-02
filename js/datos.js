@@ -92,8 +92,11 @@ export async function validarCupon(codigo, subtotal) {
 
 // ---------- Pedidos del cliente (RLS: solo ve los suyos) ----------
 export async function misPedidos() {
-  return comprobar(await supabase.from('pedidos')
-    .select('id, codigo, estado, total, creado_en').order('creado_en', { ascending: false }));
+  const usuario = await usuarioActual();
+  if (!usuario) return [];
+  let consulta = supabase.from('pedidos').select('id, codigo, estado, total, creado_en');
+  if (usuario.rol !== 'admin') consulta = consulta.eq('usuario_id', usuario.id);
+  return comprobar(await consulta.order('creado_en', { ascending: false }));
 }
 export async function pedidoPorCodigo(codigo) {
   return comprobar(await supabase.from('pedidos')
