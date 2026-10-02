@@ -55,7 +55,17 @@ export function aviso(msg) {
       pintarContadorCarrito();
     }
     
-    export function unidadesEnCarrito() {
+    export function lineasValidas(variantes) {
+  const carrito = leerCarrito();
+  const validas = carrito.filter((l) => variantes.some((v) => v.id === l.variante_id && v.productos));
+  if (validas.length !== carrito.length) {
+    guardarCarrito(validas);
+    aviso('Hemos quitado del carrito productos que ya no están disponibles.');
+  }
+  return validas;
+}
+
+export function unidadesEnCarrito() {
       return leerCarrito().reduce((a, l) => a + l.cantidad, 0);
     }
 
