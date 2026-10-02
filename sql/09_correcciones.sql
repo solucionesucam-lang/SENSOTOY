@@ -45,3 +45,15 @@ grant select on public.transiciones_pedido to authenticated;
 drop policy if exists "transiciones: solo admin" on public.transiciones_pedido;
 create policy "transiciones: solo admin" on public.transiciones_pedido
   for select to authenticated using ((select public.es_admin()));
+
+
+create or replace function public.cupon_ya_usado(p_codigo text, p_usuario uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.pedidos
+                 where usuario_id = p_usuario and cupon_codigo = p_codigo
+                   and estado <> 'cancelado');
+$$;
+
+revoke execute on function public.cupon_ya_usado(text, uuid) from public, anon, authenticated;
