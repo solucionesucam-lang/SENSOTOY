@@ -12,12 +12,12 @@
 <main class="wrap" id="contenido"><p class="cargando">Cargando…</p></main>
 <script type="module">
 import { pintarMarco, exigirSesion, euros, esc, fecha, estadoBadge, ESTADOS, aviso } from './js/ui.js';
-import { todosLosPedidos, eventos, incidencias, cambiarEstado, resumenVentas, ventasPorProducto, stockBajo } from './js/datos.js';
+import { todosLosPedidos, eventos, incidencias, cambiarEstado, resumenVentas, ventasPorProducto, stockBajo, todosLosEventos, transicionesPedido } from './js/datos.js';
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 let pedidos = [], listaEventos = [], listaIncidencias = [], seleccionado = null;
-let resumen = null, ranking = [], bajo = [];
+let resumen = null, ranking = [], bajo = [], transiciones = [];
 let fCodigo = '', fEstado = '', fCliente = '';
 
 if (exigirSesion(usuario)) {
@@ -30,7 +30,7 @@ if (exigirSesion(usuario)) {
 
 async function cargar() {
   try {
-    [pedidos, listaEventos, listaIncidencias, resumen, ranking, bajo] = await Promise.all([todosLosPedidos(), eventos(), incidencias(), resumenVentas(), ventasPorProducto(), stockBajo()]);
+    [pedidos, listaEventos, listaIncidencias, resumen, ranking, bajo, transiciones] = await Promise.all([todosLosPedidos(), eventos(40), incidencias(), resumenVentas(), ventasPorProducto(), stockBajo(), transicionesPedido()]);
     if (!seleccionado && pedidos.length) seleccionado = pedidos[0].id;
     pintar();
   } catch (e) {
@@ -38,10 +38,11 @@ async function cargar() {
   }
 }
 
+function permitido(desde, hasta) {
+  return transiciones.some((t) => t.estado_desde === desde && t.estado_hasta === hasta);
+}
+
 function pintar() {
-  const cobrado = pedidos.flatMap((p) => p.pagos).filter((x) => x.resultado === 'aceptado')
-                         .reduce((a, x) => a + Number(x.importe), 0);
-  const rechazados = pedidos.flatMap((p) => p.pagos).filter((x) => x.resultado === 'rechazado').length;
   const d = pedidos.find((p) => p.id === seleccionado);
   const c = fCodigo.toLowerCase(), q = fCliente.toLowerCase();
   const visibles = pedidos.filter((p) => p.codigo.toLowerCase().includes(c) && (!fEstado || p.estado === fEstado)
@@ -53,12 +54,6 @@ function pintar() {
       <div class="opciones"><button class="btn btn-ghost" id="exp-eventos">Exportar eventos (JSON)</button>
         <button class="btn btn-ghost" id="exp-pedidos">Exportar pedidos (CSV)</button>
         <button class="btn btn-ghost" id="recargar">Recargar</button></div>
-    </div>
-    <div class="kpis">
-      <div class="card pad kpi"><span class="small muted">Pedidos</span><b>${pedidos.length}</b></div>
-      <div class="card pad kpi"><span class="small muted">Cobrado (simulado)</span><b>${euros(cobrado)}</b></div>
-      <div class="card pad kpi"><span class="small muted">Pagos rechazados</span><b>${rechazados}</b></div>
-      <div class="card pad kpi"><span class="small muted">Incidencias abiertas</span><b>${listaIncidencias.filter((i) => i.estado === 'abierta').length}</b></div>
     </div>
     <div class="kpis">
       <div class="card pad kpi"><span class="small muted">Pedidos (pagos aceptados)</span><b>${resumen.pedidos}</b></div>
@@ -105,7 +100,8 @@ function pintar() {
         </div>
         <label style="margin-top:14px">Cambiar estado</label>
         <div class="opciones">${Object.entries(ESTADOS).map(([k, [t]]) =>
-          `<button class="pill ${k === d.estado ? 'on' : ''}" style="font-size:13px;padding:7px 12px" data-estado="${k}">${t}</button>`).join('')}</div>
+          `<button class="pill ${k === d.estado ? 'on' : ''}" style="font-size:13px;padding:7px 12px" data-estado="${k}"
+          ${permitido(d.estado, k) ? '' : 'disabled'}>${t}</button>`).join('')}</div>
       </div>` : ''}
     </div>
 
@@ -143,7 +139,11 @@ caja.addEventListener('click', async (e) => {
   } else if (b.id === 'recargar') {
     cargar();
   } else if (b.id === 'exp-eventos') {
-    descargar('eventos-sensotoys.json', JSON.stringify(listaEventos, null, 2), 'application/json');
+    b.disabled = true;
+    try {
+      descargar('eventos-sensotoys.json', JSON.stringify(await todosLosEventos(), null, 2), 'application/json');
+    } catch (err) { aviso(err.message); }
+    b.disabled = false;
   } else if (b.id === 'exp-pedidos') {
     const cab = ['codigo', 'cliente', 'fecha', 'estado', 'subtotal', 'descuento', 'envio', 'total', 'pago', 'resultado'];
     const filas = pedidos.map((p) => [p.codigo, p.perfiles?.email, p.creado_en, p.estado, p.subtotal, p.descuento,

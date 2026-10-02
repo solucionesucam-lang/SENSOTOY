@@ -123,6 +123,21 @@ export async function eventos(limite = 200) {
     .select('id, tipo, sesion_id, datos, creado_en, perfiles ( email ), pedidos ( codigo )')
     .order('creado_en', { ascending: false }).limit(limite));
 }
+export async function todosLosEventos() {
+  const pagina = 1000;
+  const todos = [];
+  for (let desde = 0; ; desde += pagina) {
+    const lote = comprobar(await supabase.from('eventos')
+      .select('id, tipo, sesion_id, datos, creado_en, perfiles ( email ), pedidos ( codigo )')
+      .order('creado_en', { ascending: false }).order('id', { ascending: false })
+      .range(desde, desde + pagina - 1));
+    todos.push(...lote);
+    if (lote.length < pagina) return todos;
+  }
+}
+export async function transicionesPedido() {
+  return comprobar(await supabase.from('transiciones_pedido').select('estado_desde, estado_hasta'));
+}
 export async function incidencias() {
   return comprobar(await supabase.from('incidencias')
     .select('*, perfiles ( email ), pedidos ( codigo )').order('creado_en', { ascending: false }));
