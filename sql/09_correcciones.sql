@@ -408,3 +408,15 @@ select
 from resumen_pedidos rp, resumen_pagos rpg;
 
 grant select on public.v_ventas_por_producto, public.v_resumen_ventas to authenticated;
+
+
+revoke execute on function
+  public.crear_pedido(jsonb, jsonb, text, text, text, text),
+  public.cambiar_estado_pedido(bigint, text)
+from public, anon, authenticated;
+grant execute on function
+  public.crear_pedido(jsonb, jsonb, text, text, text, text),
+  public.cambiar_estado_pedido(bigint, text)
+to authenticated;
+revoke execute on function public.validar_cupon(text, numeric) from public;
+grant execute on function public.validar_cupon(text, numeric) to anon, authenticated;
