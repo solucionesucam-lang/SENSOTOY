@@ -3,7 +3,7 @@
 // Todas las lecturas y escrituras a la base de datos pasan por aquí.
 // Las páginas nunca hablan con Supabase directamente.
 // =====================================================================
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../config.js';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
