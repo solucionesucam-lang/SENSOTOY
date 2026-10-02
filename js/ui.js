@@ -111,13 +111,12 @@ export async function pintarMarco() {
         localStorage.removeItem('sensotoys_usuario_id');
       }
 
-  // NUEVO: da un id al <main> de la página si no lo tiene, para que el
-  // enlace "Saltar al contenido" tenga un destino al que ir.
   const principal = document.querySelector('main');
-    if (principal && !principal.id) principal.id = 'contenido-principal';
+  if (principal && !principal.id) principal.id = 'contenido-principal';
+  const destinoSalto = principal?.id || 'contenido-principal';
 
   document.body.insertAdjacentHTML('afterbegin', `
-    <a class="saltar-enlace" href="#contenido-principal">Saltar al contenido</a>
+    <a class="saltar-enlace" href="#${destinoSalto}">Saltar al contenido</a>
     <div class="banner">Prototipo académico UCAM · Sin actividad comercial real · No introduzcas datos personales ni medios de pago reales</div>
     <header class="top"><div class="wrap">
       <a class="logo" href="index.html">SENSOTOYS</a>
