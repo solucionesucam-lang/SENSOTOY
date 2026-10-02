@@ -53,11 +53,13 @@ const CAMPOS_PRODUCTO = `id, nombre, slug, descripcion, material, edad_minima,
   variantes ( id, sku, color, color_hex, textura, talla, medida_cm, precio, stock )`;
 
 export async function productos() {
-  return comprobar(await supabase.from('productos').select(CAMPOS_PRODUCTO).order('id'));
+  return comprobar(await supabase.from('productos').select(CAMPOS_PRODUCTO)
+    .order('id').order('id', { referencedTable: 'variantes' }));
 }
 export async function productoPorSlug(slug) {
   return comprobar(await supabase.from('productos')
-    .select(CAMPOS_PRODUCTO).eq('slug', slug).maybeSingle());
+    .select(CAMPOS_PRODUCTO).eq('slug', slug)
+    .order('id', { referencedTable: 'variantes' }).maybeSingle());
 }
 export async function variantesPorId(ids) {
   if (ids.length === 0) return [];
