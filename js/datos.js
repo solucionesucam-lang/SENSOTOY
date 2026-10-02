@@ -3,7 +3,7 @@
 // Todas las lecturas y escrituras a la base de datos pasan por aquí.
 // Las páginas nunca hablan con Supabase directamente.
 // =====================================================================
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../config.js';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -53,11 +53,13 @@ const CAMPOS_PRODUCTO = `id, nombre, slug, descripcion, material, edad_minima,
   variantes ( id, sku, color, color_hex, textura, talla, medida_cm, precio, stock )`;
 
 export async function productos() {
-  return comprobar(await supabase.from('productos').select(CAMPOS_PRODUCTO).order('id'));
+  return comprobar(await supabase.from('productos').select(CAMPOS_PRODUCTO)
+    .order('id').order('id', { referencedTable: 'variantes' }));
 }
 export async function productoPorSlug(slug) {
   return comprobar(await supabase.from('productos')
-    .select(CAMPOS_PRODUCTO).eq('slug', slug).maybeSingle());
+    .select(CAMPOS_PRODUCTO).eq('slug', slug)
+    .order('id', { referencedTable: 'variantes' }).maybeSingle());
 }
 export async function variantesPorId(ids) {
   if (ids.length === 0) return [];
@@ -92,8 +94,11 @@ export async function validarCupon(codigo, subtotal) {
 
 // ---------- Pedidos del cliente (RLS: solo ve los suyos) ----------
 export async function misPedidos() {
-  return comprobar(await supabase.from('pedidos')
-    .select('id, codigo, estado, total, creado_en').order('creado_en', { ascending: false }));
+  const usuario = await usuarioActual();
+  if (!usuario) return [];
+  let consulta = supabase.from('pedidos').select('id, codigo, estado, total, creado_en');
+  if (usuario.rol !== 'admin') consulta = consulta.eq('usuario_id', usuario.id);
+  return comprobar(await consulta.order('creado_en', { ascending: false }));
 }
 export async function pedidoPorCodigo(codigo) {
   return comprobar(await supabase.from('pedidos')
@@ -117,6 +122,21 @@ export async function eventos(limite = 200) {
   return comprobar(await supabase.from('eventos')
     .select('id, tipo, sesion_id, datos, creado_en, perfiles ( email ), pedidos ( codigo )')
     .order('creado_en', { ascending: false }).limit(limite));
+}
+export async function todosLosEventos() {
+  const pagina = 1000;
+  const todos = [];
+  for (let desde = 0; ; desde += pagina) {
+    const lote = comprobar(await supabase.from('eventos')
+      .select('id, tipo, sesion_id, datos, creado_en, perfiles ( email ), pedidos ( codigo )')
+      .order('creado_en', { ascending: false }).order('id', { ascending: false })
+      .range(desde, desde + pagina - 1));
+    todos.push(...lote);
+    if (lote.length < pagina) return todos;
+  }
+}
+export async function transicionesPedido() {
+  return comprobar(await supabase.from('transiciones_pedido').select('estado_desde, estado_hasta'));
 }
 export async function incidencias() {
   return comprobar(await supabase.from('incidencias')

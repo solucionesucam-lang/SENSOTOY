@@ -11,7 +11,7 @@
 <body>
 <main class="wrap" id="ficha"><p class="cargando">Cargando…</p></main>
 <script type="module">
-import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, MAX_POR_PRODUCTO } from './js/ui.js';
+import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, MAX_POR_PRODUCTO, colorSlug } from './js/ui.js';
 import { productoPorSlug, registrarEvento } from './js/datos.js';
 
 await pintarMarco();
@@ -34,31 +34,19 @@ if (producto) {
   pintar();
 }
 
-function slugColor(c) {
-  return String(c).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
 function varianteElegida() {
   return producto.variantes.find((v) => v.color === color && v.talla === talla);
-}
-
-// Convierte el nombre de color de la BBDD en el sufijo usado en el nombre de archivo
-function colorSlug(color) {
-  let c = color.replace(/\s*Aurora$/i, '').trim(); // quita "Aurora" de nube-mochi-aurora
-  if (c.includes('/')) {
-    // colores compuestos tipo "Verde / Amarillo" → "verde-amarillo"
-    return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
-  }
-  return c.split(' ')[0].toLowerCase(); // se queda solo con la primera palabra
 }
 
 function pintar() {
   const v = varianteElegida();
   const colores = [...new Map(producto.variantes.map((x) => [x.color, x.color_hex]))];
   const tallas = producto.variantes.filter((x) => x.color === color);
-  const enCarrito = leerCarrito().find((l) => l.variante_id === v.id)?.cantidad || 0;
-  const max = Math.max(0, Math.min(MAX_POR_PRODUCTO - enCarrito, v.stock - enCarrito));
+  const carritoActual = leerCarrito();
+  const enCarrito = carritoActual.find((l) => l.variante_id === v.id)?.cantidad || 0;
+  const enProducto = carritoActual.filter((l) => producto.variantes.some((x) => x.id === l.variante_id))
+    .reduce((a, l) => a + l.cantidad, 0);
+  const max = Math.max(0, Math.min(MAX_POR_PRODUCTO - enProducto, v.stock - enCarrito));
   const stockTotal = producto.variantes.reduce((a, x) => a + x.stock, 0);
 
   caja.innerHTML = `
@@ -66,8 +54,8 @@ function pintar() {
       <a href="catalogo.html?categoria=${producto.categorias.slug}">${esc(producto.categorias.nombre)}</a> / ${esc(producto.nombre)}</div>
     <div class="split">
       <div class="photo" style="height:420px;background:${v.color_hex}">
-      <img src="img/productos/${producto.slug}-${colorSlug(color)}.webp" alt="${esc(producto.descripcion)}" loading="lazy"
-       style="width:100%;height:100%;object-fit:cover"
+      <img src="img/productos/${producto.slug}-${colorSlug(color)}.webp" alt="${esc(producto.descripcion)}"
+       style="width:100%;height:100%;object-fit:contain"
        onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto del producto pendiente]'}))};this.src='img/productos/${producto.slug}.webp'">
       </div>
 
@@ -92,7 +80,7 @@ function pintar() {
           <div style="display:flex;gap:12px;align-items:center">
             <label for="cantidad" style="margin:0">Cantidad</label>
             <input id="cantidad" type="number" min="1" max="${max}" value="1" style="width:90px" ${max === 0 ? 'disabled' : ''}>
-            <span class="small muted">Máximo ${MAX_POR_PRODUCTO} por producto${enCarrito ? ` (ya tienes ${enCarrito})` : ''}</span>
+            <span class="small muted">Máximo ${MAX_POR_PRODUCTO} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}</span>
           </div>
           <div class="err" id="error"></div>
           <button class="btn btn-primary" id="anadir" ${max === 0 ? 'disabled' : ''}>${v.stock === 0 ? 'Agotado' : 'Añadir al carrito'}</button>

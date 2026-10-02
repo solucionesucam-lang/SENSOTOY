@@ -14,7 +14,7 @@
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, resumenImportes, MAX_POR_PRODUCTO, ENVIO_GRATIS } from './js/ui.js';
+import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, MAX_POR_PRODUCTO, ENVIO_GRATIS, colorSlug } from './js/ui.js';
 import { variantesPorId } from './js/datos.js';
 
 await pintarMarco();
@@ -25,8 +25,7 @@ async function cargar() {
   try {
     // Precio y stock actuales: siempre desde la base de datos
     variantes = await variantesPorId(leerCarrito().map((l) => l.variante_id));
-    // Se quitan del carrito las variantes que ya no existen
-    guardarCarrito(leerCarrito().filter((l) => variantes.some((v) => v.id === l.variante_id)));
+    lineasValidas(variantes);
     pintar();
   } catch (e) {
     caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
@@ -45,9 +44,9 @@ function pintar() {
     subtotal += v.precio * l.cantidad;
     return `<div class="linea">
       <div class="photo" style="height:64px;background:${v.color_hex}">
-        <img src="img/productos/${v.productos.slug}.webp" alt="${esc(v.productos.nombre)}" loading="lazy"
+        <img src="img/productos/${v.productos.slug}-${colorSlug(v.color)}.webp" alt="${esc(v.productos.nombre)}" loading="lazy"
              style="width:100%;height:100%;object-fit:contain"
-             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))"></div>
+             onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))};this.src='img/productos/${v.productos.slug}.webp'"></div>
       <div><a class="pname" href="producto.html?slug=${v.productos.slug}" style="color:var(--ink)">${esc(v.productos.nombre)}</a>
         <div class="small muted">${esc(v.color)} · Talla ${esc(v.talla)} · ${euros(v.precio)}/ud.</div>
         ${l.cantidad > v.stock ? `<div class="err">Solo quedan ${v.stock}</div>` : ''}
@@ -79,7 +78,9 @@ caja.addEventListener('click', (e) => {
     const l = carrito[Number(b.dataset.i)];
     const v = variantes.find((x) => x.id === l.variante_id);
     const nueva = l.cantidad + Number(b.dataset.d);
-    if (nueva < 1 || nueva > Math.min(MAX_POR_PRODUCTO, v.stock)) return;
+    const otras = carrito.filter((x) => x !== l && variantes.find((y) => y.id === x.variante_id)?.productos.slug === v.productos.slug)
+      .reduce((a, x) => a + x.cantidad, 0);
+    if (nueva < 1 || nueva > v.stock || otras + nueva > MAX_POR_PRODUCTO) return;
     l.cantidad = nueva;
   }
   guardarCarrito(carrito);

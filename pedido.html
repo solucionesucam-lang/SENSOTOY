@@ -29,9 +29,31 @@ async function lista() {
   caja.innerHTML = `<h1>Mis pedidos</h1>
     ${pedidos.length === 0 ? '<p class="muted">Todavía no tienes pedidos.</p>' : `
     <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
-      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${p.codigo}">${p.codigo}</a></td><td>${fecha(p.creado_en)}</td>
+      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${encodeURIComponent(p.codigo)}">${esc(p.codigo)}</a></td><td>${fecha(p.creado_en)}</td>
         <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')}
     </tbody></table></div>`}`;
+}
+
+function mensajeEstado(estado, pago) {
+  const rechazado = pago?.resultado === 'rechazado';
+  switch (estado) {
+    case 'cancelado':
+      return ['Pedido cancelado', 'El pedido se ha cancelado. Si tienes dudas, abre una incidencia.'];
+    case 'incidencia':
+      return rechazado
+        ? ['Pago rechazado', 'La tarjeta ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.']
+        : ['Pedido con incidencia', 'Hay una incidencia abierta sobre este pedido. Si necesitas ayuda, escríbenos desde Ayuda y postventa.'];
+    case 'enviado':
+      return ['Pedido enviado', 'Tu pedido ya está en camino.'];
+    case 'preparacion':
+      return ['Pedido en preparación', 'Estamos preparando tu pedido para enviarlo.'];
+    case 'pagado':
+      return ['Pedido registrado', 'El pago se ha validado. No se ha realizado ningún cobro real.'];
+    default:
+      return ['Pedido registrado', pago?.resultado === 'pendiente'
+        ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
+        : 'El pedido se ha guardado.'];
+  }
 }
 
 // Con código: detalle de un pedido (RLS impide ver pedidos ajenos)
@@ -39,16 +61,12 @@ async function detalle() {
   const p = await pedidoPorCodigo(codigo);
   if (!p) { caja.innerHTML = '<h1>Pedido no encontrado</h1><p class="muted">No existe o no es tuyo.</p>'; return; }
   const pago = p.pagos[0];
-  const rechazado = pago?.resultado === 'rechazado';
+  const [titular, texto] = mensajeEstado(p.estado, pago);
   caja.innerHTML = `
     <div class="split">
       <div>
-        <h1>${rechazado ? 'Pago rechazado' : 'Pedido registrado'}</h1>
-        <p class="lead">${rechazado
-          ? 'La tarjeta ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.'
-          : pago?.resultado === 'pendiente'
-            ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
-            : 'El pago se ha validado. No se ha realizado ningún cobro real.'}</p>
+        <h1>${titular}</h1>
+        <p class="lead">${texto}</p>
         <div class="card scroll" style="margin-top:20px"><table>
           <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
           ${p.lineas_pedido.map((l) => `<tr><td>${esc(l.nombre_producto)}<div class="small muted">${esc(l.descripcion_variante)}</div></td>

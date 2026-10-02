@@ -27,16 +27,8 @@
   <div class="grid" id="destacados"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, tarjetaProducto, esc } from './js/ui.js';
+import { pintarMarco, tarjetaProducto, esc, colorSlug } from './js/ui.js';
 import { categorias, productos } from './js/datos.js';
-
-function colorSlug(color) {
-  let c = color.replace(/\s*Aurora$/i, '').trim();
-  if (c.includes('/')) {
-    return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
-  }
-  return c.split(' ')[0].toLowerCase();
-}
 
 await pintarMarco();
 try {
@@ -51,8 +43,8 @@ try {
     const quedan = aurora.variantes.reduce((a, v) => a + v.stock, 0);
     document.getElementById('kicker').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion}`;
     document.getElementById('fotoHero').innerHTML = `
-  <img src="img/productos/${aurora.slug}-${colorSlug(aurora.variantes[0].color)}.webp" alt="${esc(aurora.descripcion)}" loading="lazy"
-       style="width:100%;height:100%;object-fit:cover"
+  <img src="img/productos/${aurora.slug}-${colorSlug(aurora.variantes[0].color)}.webp" alt="${esc(aurora.descripcion)}"
+       style="width:100%;height:100%;object-fit:contain"
        onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto de producto pendiente]'}))};this.src='img/productos/${aurora.slug}.webp'">`;
   }
 } catch (e) {

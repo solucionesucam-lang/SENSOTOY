@@ -55,7 +55,17 @@ export function aviso(msg) {
       pintarContadorCarrito();
     }
     
-    export function unidadesEnCarrito() {
+    export function lineasValidas(variantes) {
+  const carrito = leerCarrito();
+  const validas = carrito.filter((l) => variantes.some((v) => v.id === l.variante_id && v.productos));
+  if (validas.length !== carrito.length) {
+    guardarCarrito(validas);
+    aviso('Hemos quitado del carrito productos que ya no están disponibles.');
+  }
+  return validas;
+}
+
+export function unidadesEnCarrito() {
       return leerCarrito().reduce((a, l) => a + l.cantidad, 0);
     }
 
@@ -65,6 +75,24 @@ export function resumenImportes(subtotal) {
   const envio = subtotal === 0 ? 0 : (subtotal >= ENVIO_GRATIS ? 0 : ENVIO);
   const base = Math.round((subtotal / 1.21) * 100) / 100;
   return { subtotal, base, iva: subtotal - base, envio, total: subtotal + envio };
+}
+
+function fusionarCarritoInvitado() {
+  try {
+    const invitado = JSON.parse(localStorage.getItem('sensotoys_carrito_invitado')) || [];
+    if (invitado.length) {
+      const propio = leerCarrito();
+      for (const l of invitado) {
+        const existente = propio.find((x) => x.variante_id === l.variante_id);
+        if (existente) existente.cantidad = Math.min(MAX_POR_PRODUCTO, existente.cantidad + l.cantidad);
+        else propio.push({ variante_id: l.variante_id, cantidad: Math.min(MAX_POR_PRODUCTO, l.cantidad) });
+      }
+      localStorage.setItem(claveCarrito(), JSON.stringify(propio));
+    }
+    localStorage.removeItem('sensotoys_carrito_invitado');
+  } catch {
+    localStorage.removeItem('sensotoys_carrito_invitado');
+  }
 }
 
 // ---------- Cabecera y pie ----------
@@ -78,17 +106,17 @@ export async function pintarMarco() {
   try { usuario = await usuarioActual(); } catch (e) { console.warn(e.message); }
       if (usuario) {
         localStorage.setItem('sensotoys_usuario_id', usuario.id);
+        fusionarCarritoInvitado();
       } else {
         localStorage.removeItem('sensotoys_usuario_id');
       }
 
-  // NUEVO: da un id al <main> de la página si no lo tiene, para que el
-  // enlace "Saltar al contenido" tenga un destino al que ir.
   const principal = document.querySelector('main');
-    if (principal && !principal.id) principal.id = 'contenido-principal';
+  if (principal && !principal.id) principal.id = 'contenido-principal';
+  const destinoSalto = principal?.id || 'contenido-principal';
 
   document.body.insertAdjacentHTML('afterbegin', `
-    <a class="saltar-enlace" href="#contenido-principal">Saltar al contenido</a>
+    <a class="saltar-enlace" href="#${destinoSalto}">Saltar al contenido</a>
     <div class="banner">Prototipo académico UCAM · Sin actividad comercial real · No introduzcas datos personales ni medios de pago reales</div>
     <header class="top"><div class="wrap">
       <a class="logo" href="index.html">SENSOTOYS</a>
@@ -145,7 +173,7 @@ export function exigirSesion(usuario) {
   return true;
 }
 
-function colorSlug(color) {
+export function colorSlug(color) {
   let c = color.replace(/\s*Aurora$/i, '').trim();
   if (c.includes('/')) {
     return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
