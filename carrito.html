@@ -78,7 +78,9 @@ caja.addEventListener('click', (e) => {
     const l = carrito[Number(b.dataset.i)];
     const v = variantes.find((x) => x.id === l.variante_id);
     const nueva = l.cantidad + Number(b.dataset.d);
-    if (nueva < 1 || nueva > Math.min(MAX_POR_PRODUCTO, v.stock)) return;
+    const otras = carrito.filter((x) => x !== l && variantes.find((y) => y.id === x.variante_id)?.productos.slug === v.productos.slug)
+      .reduce((a, x) => a + x.cantidad, 0);
+    if (nueva < 1 || nueva > v.stock || otras + nueva > MAX_POR_PRODUCTO) return;
     l.cantidad = nueva;
   }
   guardarCarrito(carrito);

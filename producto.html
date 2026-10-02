@@ -42,8 +42,11 @@ function pintar() {
   const v = varianteElegida();
   const colores = [...new Map(producto.variantes.map((x) => [x.color, x.color_hex]))];
   const tallas = producto.variantes.filter((x) => x.color === color);
-  const enCarrito = leerCarrito().find((l) => l.variante_id === v.id)?.cantidad || 0;
-  const max = Math.max(0, Math.min(MAX_POR_PRODUCTO - enCarrito, v.stock - enCarrito));
+  const carritoActual = leerCarrito();
+  const enCarrito = carritoActual.find((l) => l.variante_id === v.id)?.cantidad || 0;
+  const enProducto = carritoActual.filter((l) => producto.variantes.some((x) => x.id === l.variante_id))
+    .reduce((a, l) => a + l.cantidad, 0);
+  const max = Math.max(0, Math.min(MAX_POR_PRODUCTO - enProducto, v.stock - enCarrito));
   const stockTotal = producto.variantes.reduce((a, x) => a + x.stock, 0);
 
   caja.innerHTML = `
@@ -77,7 +80,7 @@ function pintar() {
           <div style="display:flex;gap:12px;align-items:center">
             <label for="cantidad" style="margin:0">Cantidad</label>
             <input id="cantidad" type="number" min="1" max="${max}" value="1" style="width:90px" ${max === 0 ? 'disabled' : ''}>
-            <span class="small muted">Máximo ${MAX_POR_PRODUCTO} por producto${enCarrito ? ` (ya tienes ${enCarrito})` : ''}</span>
+            <span class="small muted">Máximo ${MAX_POR_PRODUCTO} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}</span>
           </div>
           <div class="err" id="error"></div>
           <button class="btn btn-primary" id="anadir" ${max === 0 ? 'disabled' : ''}>${v.stock === 0 ? 'Agotado' : 'Añadir al carrito'}</button>
