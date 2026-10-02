@@ -14,7 +14,7 @@
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, resumenImportes, MAX_POR_PRODUCTO, ENVIO_GRATIS } from './js/ui.js';
+import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, resumenImportes, MAX_POR_PRODUCTO, ENVIO_GRATIS, colorSlug } from './js/ui.js';
 import { variantesPorId } from './js/datos.js';
 
 await pintarMarco();
@@ -45,9 +45,9 @@ function pintar() {
     subtotal += v.precio * l.cantidad;
     return `<div class="linea">
       <div class="photo" style="height:64px;background:${v.color_hex}">
-        <img src="img/productos/${v.productos.slug}.webp" alt="${esc(v.productos.nombre)}" loading="lazy"
+        <img src="img/productos/${v.productos.slug}-${colorSlug(v.color)}.webp" alt="${esc(v.productos.nombre)}" loading="lazy"
              style="width:100%;height:100%;object-fit:contain"
-             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))"></div>
+             onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))};this.src='img/productos/${v.productos.slug}.webp'"></div>
       <div><a class="pname" href="producto.html?slug=${v.productos.slug}" style="color:var(--ink)">${esc(v.productos.nombre)}</a>
         <div class="small muted">${esc(v.color)} · Talla ${esc(v.talla)} · ${euros(v.precio)}/ud.</div>
         ${l.cantidad > v.stock ? `<div class="err">Solo quedan ${v.stock}</div>` : ''}

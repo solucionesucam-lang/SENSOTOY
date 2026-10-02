@@ -11,7 +11,7 @@
 <body>
 <main class="wrap" id="ficha"><p class="cargando">Cargando…</p></main>
 <script type="module">
-import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, MAX_POR_PRODUCTO } from './js/ui.js';
+import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, MAX_POR_PRODUCTO, colorSlug } from './js/ui.js';
 import { productoPorSlug, registrarEvento } from './js/datos.js';
 
 await pintarMarco();
@@ -34,23 +34,8 @@ if (producto) {
   pintar();
 }
 
-function slugColor(c) {
-  return String(c).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
 function varianteElegida() {
   return producto.variantes.find((v) => v.color === color && v.talla === talla);
-}
-
-// Convierte el nombre de color de la BBDD en el sufijo usado en el nombre de archivo
-function colorSlug(color) {
-  let c = color.replace(/\s*Aurora$/i, '').trim(); // quita "Aurora" de nube-mochi-aurora
-  if (c.includes('/')) {
-    // colores compuestos tipo "Verde / Amarillo" → "verde-amarillo"
-    return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
-  }
-  return c.split(' ')[0].toLowerCase(); // se queda solo con la primera palabra
 }
 
 function pintar() {

@@ -27,16 +27,8 @@
   <div class="grid" id="destacados"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, tarjetaProducto, esc } from './js/ui.js';
+import { pintarMarco, tarjetaProducto, esc, colorSlug } from './js/ui.js';
 import { categorias, productos } from './js/datos.js';
-
-function colorSlug(color) {
-  let c = color.replace(/\s*Aurora$/i, '').trim();
-  if (c.includes('/')) {
-    return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
-  }
-  return c.split(' ')[0].toLowerCase();
-}
 
 await pintarMarco();
 try {

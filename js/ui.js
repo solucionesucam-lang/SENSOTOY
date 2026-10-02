@@ -164,7 +164,7 @@ export function exigirSesion(usuario) {
   return true;
 }
 
-function colorSlug(color) {
+export function colorSlug(color) {
   let c = color.replace(/\s*Aurora$/i, '').trim();
   if (c.includes('/')) {
     return c.split('/').map((s) => s.trim().toLowerCase()).join('-');
