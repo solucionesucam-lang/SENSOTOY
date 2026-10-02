@@ -67,6 +67,24 @@ export function resumenImportes(subtotal) {
   return { subtotal, base, iva: subtotal - base, envio, total: subtotal + envio };
 }
 
+function fusionarCarritoInvitado() {
+  try {
+    const invitado = JSON.parse(localStorage.getItem('sensotoys_carrito_invitado')) || [];
+    if (invitado.length) {
+      const propio = leerCarrito();
+      for (const l of invitado) {
+        const existente = propio.find((x) => x.variante_id === l.variante_id);
+        if (existente) existente.cantidad = Math.min(MAX_POR_PRODUCTO, existente.cantidad + l.cantidad);
+        else propio.push({ variante_id: l.variante_id, cantidad: Math.min(MAX_POR_PRODUCTO, l.cantidad) });
+      }
+      localStorage.setItem(claveCarrito(), JSON.stringify(propio));
+    }
+    localStorage.removeItem('sensotoys_carrito_invitado');
+  } catch {
+    localStorage.removeItem('sensotoys_carrito_invitado');
+  }
+}
+
 // ---------- Cabecera y pie ----------
 function pintarContadorCarrito() {
   const el = document.getElementById('contador-carrito');
@@ -78,6 +96,7 @@ export async function pintarMarco() {
   try { usuario = await usuarioActual(); } catch (e) { console.warn(e.message); }
       if (usuario) {
         localStorage.setItem('sensotoys_usuario_id', usuario.id);
+        fusionarCarritoInvitado();
       } else {
         localStorage.removeItem('sensotoys_usuario_id');
       }
