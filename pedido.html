@@ -29,7 +29,7 @@ async function lista() {
   caja.innerHTML = `<h1>Mis pedidos</h1>
     ${pedidos.length === 0 ? '<p class="muted">Todavía no tienes pedidos.</p>' : `
     <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
-      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${p.codigo}">${p.codigo}</a></td><td>${fecha(p.creado_en)}</td>
+      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${encodeURIComponent(p.codigo)}">${esc(p.codigo)}</a></td><td>${fecha(p.creado_en)}</td>
         <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')}
     </tbody></table></div>`}`;
 }

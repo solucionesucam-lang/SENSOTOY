@@ -30,7 +30,7 @@ if (exigirSesion(usuario)) {
     <form id="form" class="card pad" style="display:flex;flex-direction:column;gap:12px" novalidate>
       <div><label for="pedido">Pedido</label><select id="pedido">
         <option value="">Consulta general (sin pedido)</option>
-        ${pedidos.map((p) => `<option value="${p.id}" ${String(p.id) === elegido ? 'selected' : ''}>${p.codigo}</option>`).join('')}
+        ${pedidos.map((p) => `<option value="${p.id}" ${String(p.id) === elegido ? 'selected' : ''}>${esc(p.codigo)}</option>`).join('')}
       </select></div>
       <div><label for="motivo">Motivo</label><select id="motivo">
         <option value="">Elige un motivo</option>

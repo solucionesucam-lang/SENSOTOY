@@ -85,12 +85,12 @@ function pintar() {
     <div class="split">
       <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
         ${visibles.map((p) => `<tr class="clic ${p.id === seleccionado ? 'sel' : ''}" data-id="${p.id}" tabindex="0">
-          <td><strong>${p.codigo}</strong></td><td>${esc(p.perfiles?.email)}</td><td>${fecha(p.creado_en)}</td>
+          <td><strong>${esc(p.codigo)}</strong></td><td>${esc(p.perfiles?.email)}</td><td>${fecha(p.creado_en)}</td>
           <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')
           || '<tr><td colspan="5" class="muted">Sin resultados.</td></tr>'}
       </tbody></table></div>
       ${d ? `<div class="card pad">
-        <div class="row"><h2>Detalle</h2><span class="small muted">${d.codigo}</span></div>
+        <div class="row"><h2>Detalle</h2><span class="small muted">${esc(d.codigo)}</span></div>
         <div class="sum">
           <div><span>Cliente</span><span>${esc(d.perfiles?.nombre)}</span></div>
           <div><span>Pago</span><span>${d.pagos.map((x) => `${x.metodo}${x.ultimos4 ? ' ···· ' + x.ultimos4 : ''} · ${x.resultado}`).join(', ') || '—'}</span></div>
@@ -107,15 +107,15 @@ function pintar() {
 
     <h2 style="margin-top:36px">Últimos eventos registrados</h2>
     <div class="card scroll"><table><thead><tr><th>#</th><th>Evento</th><th>Usuario</th><th>Pedido</th><th>Fecha</th><th>Datos</th></tr></thead><tbody>
-      ${listaEventos.slice(0, 40).map((e) => `<tr><td>${e.id}</td><td><strong>${e.tipo}</strong></td>
-        <td>${esc(e.perfiles?.email || 'anónimo (' + (e.sesion_id || '—') + ')')}</td><td>${e.pedidos?.codigo || '—'}</td>
+      ${listaEventos.slice(0, 40).map((e) => `<tr><td>${e.id}</td><td><strong>${esc(e.tipo)}</strong></td>
+        <td>${esc(e.perfiles?.email || 'anónimo (' + (e.sesion_id || '—') + ')')}</td><td>${esc(e.pedidos?.codigo || '—')}</td>
         <td>${fecha(e.creado_en)}</td><td class="mono">${esc(JSON.stringify(e.datos))}</td></tr>`).join('')
         || '<tr><td colspan="6" class="muted">Sin eventos todavía.</td></tr>'}
     </tbody></table></div>
 
     <h2 style="margin-top:36px">Incidencias y postventa</h2>
     <div class="card scroll"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Pedido</th><th>Motivo</th><th>Mensaje</th><th>Estado</th></tr></thead><tbody>
-      ${listaIncidencias.map((i) => `<tr><td>${fecha(i.creado_en)}</td><td>${esc(i.perfiles?.email)}</td><td>${i.pedidos?.codigo || '—'}</td>
+      ${listaIncidencias.map((i) => `<tr><td>${fecha(i.creado_en)}</td><td>${esc(i.perfiles?.email)}</td><td>${esc(i.pedidos?.codigo || '—')}</td>
         <td>${esc(i.motivo)}</td><td>${esc(i.mensaje)}</td><td>${esc(i.estado)}</td></tr>`).join('')
         || '<tr><td colspan="6" class="muted">Sin incidencias.</td></tr>'}
     </tbody></table></div>`;
