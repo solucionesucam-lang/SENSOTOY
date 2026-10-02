@@ -39,7 +39,7 @@ if (exigirSesion(usuario)) {
       <div><label for="mensaje">Descripción</label><textarea id="mensaje" rows="5" maxlength="1000"></textarea>
         <div class="err" id="err-mensaje"></div></div>
       <div id="error-general" class="error-caja" style="display:none"></div>
-      <button class="btn btn-primary">Enviar solicitud</button>
+      <button class="btn btn-primary" id="enviar">Enviar solicitud</button>
     </form>`;
 
   document.getElementById('form').addEventListener('submit', async (e) => {
@@ -49,6 +49,8 @@ if (exigirSesion(usuario)) {
     document.getElementById('err-motivo').textContent = motivo ? '' : 'Elige un motivo.';
     document.getElementById('err-mensaje').textContent = mensaje.length >= 10 ? '' : 'Mínimo 10 caracteres.';
     if (!motivo || mensaje.length < 10) return;
+    const boton = document.getElementById('enviar');
+    boton.disabled = true;
     try {
       await crearIncidencia({ motivo, mensaje, pedidoId: document.getElementById('pedido').value || null });
       caja.innerHTML = '<div class="card pad"><h2>Solicitud registrada</h2><p class="muted">Te responderemos lo antes posible.</p><a class="btn btn-primary" href="index.html">Volver al inicio</a></div>';
@@ -56,6 +58,7 @@ if (exigirSesion(usuario)) {
     } catch (err) {
       const box = document.getElementById('error-general');
       box.textContent = err.message; box.style.display = 'block';
+      boton.disabled = false;
     }
   });
 }
