@@ -51,8 +51,8 @@ try {
     const quedan = aurora.variantes.reduce((a, v) => a + v.stock, 0);
     document.getElementById('kicker').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion}`;
     document.getElementById('fotoHero').innerHTML = `
-  <img src="img/productos/${aurora.slug}-${colorSlug(aurora.variantes[0].color)}.webp" alt="${esc(aurora.descripcion)}" loading="lazy"
-       style="width:100%;height:100%;object-fit:cover"
+  <img src="img/productos/${aurora.slug}-${colorSlug(aurora.variantes[0].color)}.webp" alt="${esc(aurora.descripcion)}"
+       style="width:100%;height:100%;object-fit:contain"
        onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto de producto pendiente]'}))};this.src='img/productos/${aurora.slug}.webp'">`;
   }
 } catch (e) {
