@@ -70,7 +70,8 @@ create policy "eventos: solo admin" on public.eventos
   for select to authenticated using (public.es_admin());
 
 -- cupones: sin permisos. La web no puede listarlos; solo se validan
--- dentro de crear_pedido().
+-- con validar_cupon() (06) y dentro de crear_pedido(). Los cupones con
+-- un_uso_por_cliente (09), como BIENVENIDA10, solo valen una vez por cliente.
 
 
 -- ---------------------------------------------------------------------
