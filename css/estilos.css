@@ -119,6 +119,7 @@ a.card:hover .photo img { transform: scale(1.06); }
 .sin-foto { font-size: 13px; color: var(--ink2); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 22px; }
 .split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: start; }
+.split > * { min-width: 0; }
 .row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .row-envuelto { flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
 .pila { display: flex; flex-direction: column; gap: 22px; }
@@ -184,7 +185,7 @@ input.corto { width: 90px; }
 .qty button:hover:not([disabled]) { background: var(--pink); transform: scale(1.08); }
 .qty button[disabled] { opacity: .45; cursor: not-allowed; }
 
-.scroll { overflow-x: auto; }
+.scroll { overflow-x: auto; position: relative; }
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
 th { text-align: left; font-size: 13px; color: var(--ink3); padding: 11px 14px; border-bottom: 1px solid var(--line); }
 td { padding: 11px 14px; border-top: 1px solid var(--line); vertical-align: top; }
