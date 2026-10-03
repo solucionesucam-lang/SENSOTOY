@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Pedido</title>
 </head>
 <body>
-<main class="wrap" id="contenido"><p class="cargando">Cargando…</p></main>
+<main class="wrap">
+  <div id="pasillo"></div>
+  <div id="contenido"><p class="cargando">Cargando…</p></div>
+</main>
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge } from './js/ui.js';
-import { pedidoPorCodigo, misPedidos } from './js/datos.js';
+import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge, aviso, montarPasillo } from './js/ui.js';
+import { pedidoPorCodigo, misPedidos, cancelarMiPedido } from './js/datos.js';
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
@@ -56,10 +57,21 @@ function mensajeEstado(estado, pago) {
   }
 }
 
+// El pasillo con "Pedido confirmado" solo se ve justo después de comprar
+function pasilloConfirmado(p) {
+  let nuevo = null;
+  try {
+    nuevo = sessionStorage.getItem('sensotoys_pedido_nuevo');
+    if (nuevo === p.codigo) sessionStorage.removeItem('sensotoys_pedido_nuevo');
+  } catch {}
+  if (nuevo === p.codigo) montarPasillo(document.getElementById('pasillo'), 'confirmado', { sinEnlaces: ['envio'] });
+}
+
 // Con código: detalle de un pedido (RLS impide ver pedidos ajenos)
 async function detalle() {
   const p = await pedidoPorCodigo(codigo);
   if (!p) { caja.innerHTML = '<h1>Pedido no encontrado</h1><p class="muted">No existe o no es tuyo.</p>'; return; }
+  pasilloConfirmado(p);
   const pago = p.pagos[0];
   const [titular, texto] = mensajeEstado(p.estado, pago);
   caja.innerHTML = `
@@ -67,7 +79,7 @@ async function detalle() {
       <div>
         <h1>${titular}</h1>
         <p class="lead">${texto}</p>
-        <div class="card scroll" style="margin-top:20px"><table>
+        <div class="card scroll mt-m"><table>
           <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
           ${p.lineas_pedido.map((l) => `<tr><td>${esc(l.nombre_producto)}<div class="small muted">${esc(l.descripcion_variante)}</div></td>
             <td>${l.cantidad}</td><td>${euros(l.precio_unitario)}</td><td>${euros(l.importe)}</td></tr>`).join('')}
@@ -75,7 +87,7 @@ async function detalle() {
       </div>
       <div class="card pad sum">
         <div class="small muted">Número de pedido</div>
-        <div style="font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:700">${esc(p.codigo)}</div>
+        <div class="num-pedido">${esc(p.codigo)}</div>
         <div><span>Estado</span>${estadoBadge(p.estado)}</div>
         <div><span>Fecha</span><span>${fecha(p.creado_en)}</span></div>
         <div><span>Subtotal</span><span>${euros(p.subtotal)}</span></div>
@@ -84,15 +96,32 @@ async function detalle() {
         <div><span>IVA (21 %)</span><span>${euros(p.iva)}</span></div>
         <div><span>Envío</span><span>${Number(p.gastos_envio) ? euros(p.gastos_envio) : 'Gratis'}</span></div>
         <div class="total"><span>Total</span><span>${euros(p.total)}</span></div>
-        <div><span>Pago</span><span>${pago ? (pago.metodo === 'tarjeta' ? `Tarjeta ···· ${pago.ultimos4}` : 'Contra reembolso') + ' · ' + pago.resultado : '—'}</span></div>
-        <div class="small muted" style="display:block;margin-top:8px">Envío a: ${esc(p.envio_nombre)}, ${esc(p.envio_direccion)}, ${esc(p.envio_cp)} ${esc(p.envio_ciudad)} (${esc(p.envio_provincia)})</div>
+        <div><span>Pago</span><span>${pago ? (pago.metodo === 'tarjeta' ? `Tarjeta ···· ${esc(pago.ultimos4)}` : 'Contra reembolso') + ' · ' + esc(pago.resultado) : '—'}</span></div>
+        <div class="small muted aparte">Envío a: ${esc(p.envio_nombre)}, ${esc(p.envio_direccion)}, ${esc(p.envio_cp)} ${esc(p.envio_ciudad)} (${esc(p.envio_provincia)})</div>
       </div>
     </div>
-    <div class="opciones" style="margin-top:26px">
+    <div class="opciones mt-m">
       <a class="btn btn-primary" href="catalogo.html">Seguir comprando</a>
+      ${p.estado === 'creado' ? '<button class="btn btn-ghost" id="cancelar" type="button">Cancelar pedido</button>' : ''}
       <a class="btn btn-ghost" href="soporte.html?pedido=${p.id}">Abrir una incidencia</a>
       <a class="btn btn-ghost" href="pedido.html">Mis pedidos</a>
-    </div>`;
+    </div>
+    ${p.estado === 'creado' ? '<p class="small muted">Puedes cancelar el pedido mientras esté en «Creado». Se devuelve el stock y, si usaste un cupón de un solo uso, vuelve a quedar libre.</p>' : ''}
+    <div class="error-caja separada" id="error-cancelar" role="alert" hidden></div>`;
+
+  document.getElementById('cancelar')?.addEventListener('click', async (e) => {
+    if (!confirm('¿Seguro que quieres cancelar este pedido?')) return;
+    e.target.disabled = true;
+    try {
+      await cancelarMiPedido(p.codigo);
+      aviso('Pedido cancelado');
+      await detalle();
+    } catch (err) {
+      const caja = document.getElementById('error-cancelar');
+      caja.textContent = err.message; caja.hidden = false;
+      e.target.disabled = false;
+    }
+  });
 }
 </script>
 </body>

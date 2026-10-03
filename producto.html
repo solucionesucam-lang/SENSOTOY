@@ -3,22 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Producto</title>
 </head>
 <body>
-<main class="wrap" id="ficha"><p class="cargando">Cargando…</p></main>
+<main class="wrap">
+  <div id="pasillo"></div>
+  <div id="ficha"><p class="cargando">Cargando…</p></div>
+</main>
 <script type="module">
-import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, MAX_POR_PRODUCTO, colorSlug } from './js/ui.js';
+import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, CONFIG, configLista, imgProducto,
+         montarPasillo, recordarProducto, animarCarrito } from './js/ui.js';
 import { productoPorSlug, registrarEvento } from './js/datos.js';
 
 await pintarMarco();
+montarPasillo(document.getElementById('pasillo'), 'producto');
 const caja = document.getElementById('ficha');
 let producto, color, talla;
 
 try {
+  if (!configLista()) throw new Error('No se pudo cargar la configuración de la tienda.');
   producto = await productoPorSlug(param('slug'));
 } catch (e) {
   caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
@@ -27,6 +31,7 @@ if (producto === null) caja.innerHTML = '<h1>Producto no encontrado</h1><a href=
 
 if (producto) {
   document.title = 'Sensotoys · ' + producto.nombre;
+  recordarProducto(producto.slug);
   // Variante inicial: la primera con stock
   const inicial = producto.variantes.find((v) => v.stock > 0) || producto.variantes[0];
   color = inicial.color; talla = inicial.talla;
@@ -46,27 +51,23 @@ function pintar() {
   const enCarrito = carritoActual.find((l) => l.variante_id === v.id)?.cantidad || 0;
   const enProducto = carritoActual.filter((l) => producto.variantes.some((x) => x.id === l.variante_id))
     .reduce((a, l) => a + l.cantidad, 0);
-  const max = Math.max(0, Math.min(MAX_POR_PRODUCTO - enProducto, v.stock - enCarrito));
+  const max = Math.max(0, Math.min(CONFIG.maxPorProducto - enProducto, v.stock - enCarrito));
   const stockTotal = producto.variantes.reduce((a, x) => a + x.stock, 0);
 
   caja.innerHTML = `
-    <div class="small muted" style="margin-bottom:18px"><a href="catalogo.html">Catálogo</a> /
-      <a href="catalogo.html?categoria=${producto.categorias.slug}">${esc(producto.categorias.nombre)}</a> / ${esc(producto.nombre)}</div>
+    <div class="small muted migas"><a href="catalogo.html">Catálogo</a> /
+      <a href="catalogo.html?categoria=${encodeURIComponent(producto.categorias.slug)}">${esc(producto.categorias.nombre)}</a> / ${esc(producto.nombre)}</div>
     <div class="split">
-      <div class="photo" style="height:420px;background:${v.color_hex}">
-      <img src="img/productos/${producto.slug}-${colorSlug(color)}.webp" alt="${esc(producto.descripcion)}"
-       style="width:100%;height:100%;object-fit:contain"
-       onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto del producto pendiente]'}))};this.src='img/productos/${producto.slug}.webp'">
-      </div>
+      <div class="photo photo-ficha" data-bg="${esc(v.color_hex)}">${imgProducto(producto.slug, color, producto.nombre)}</div>
 
       <div>
         ${producto.es_edicion_limitada ? `<span class="badge">Edición limitada · quedan ${stockTotal} de ${producto.unidades_edicion}</span>` : ''}
-        <h1 style="margin-top:10px">${esc(producto.nombre)}</h1>
+        <h1 class="titulo-aparte">${esc(producto.nombre)}</h1>
         <p class="muted">${esc(producto.descripcion)}</p>
 
-        <label>Color: <span style="font-weight:400">${esc(color)}</span></label>
+        <label>Color: <span class="dato">${esc(color)}</span></label>
         <div class="opciones">${colores.map(([nombre, hex]) =>
-          `<button class="dot ${nombre === color ? 'on' : ''}" style="background:${hex}" data-color="${esc(nombre)}"
+          `<button class="dot ${nombre === color ? 'on' : ''}" data-bg="${esc(hex)}" data-color="${esc(nombre)}"
              aria-label="Color ${esc(nombre)}" aria-pressed="${nombre === color}"></button>`).join('')}</div>
 
         <label>Tamaño</label>
@@ -74,24 +75,23 @@ function pintar() {
           `<button class="chip ${x.talla === talla ? 'on' : ''}" data-talla="${esc(x.talla)}" aria-pressed="${x.talla === talla}">
              ${esc(x.talla)}${x.medida_cm ? ' · ' + x.medida_cm + ' cm' : ''}</button>`).join('')}</div>
 
-        <div class="card pad" style="display:flex;flex-direction:column;gap:12px">
+        <div class="card pad pila-s">
           <div><span class="price">${euros(v.precio)}</span> <span class="small muted">IVA del 21 % incluido</span></div>
           <div class="small">${v.stock > 0 ? `${v.stock} unidades de esta variante · Ref. ${esc(v.sku)}` : 'Agotada'}</div>
-          <div style="display:flex;gap:12px;align-items:center">
-            <label for="cantidad" style="margin:0">Cantidad</label>
-            <input id="cantidad" type="number" min="1" max="${max}" value="1" style="width:90px" ${max === 0 ? 'disabled' : ''}>
-            <span class="small muted">Máximo ${MAX_POR_PRODUCTO} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}</span>
+          <div class="fila-cantidad">
+            <label for="cantidad">Cantidad</label>
+            <input id="cantidad" class="corto" type="number" min="1" max="${max}" value="1" ${max === 0 ? 'disabled' : ''}>
+            <span class="small muted">Máximo ${CONFIG.maxPorProducto} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}</span>
           </div>
-          <div class="err" id="error"></div>
+          <div class="err" id="error" role="alert"></div>
           <button class="btn btn-primary" id="anadir" ${max === 0 ? 'disabled' : ''}>${v.stock === 0 ? 'Agotado' : 'Añadir al carrito'}</button>
-          <div class="small muted">Envío 3,95 € · Gratis a partir de 45 €</div>
+          <div class="small muted">Envío ${euros(CONFIG.gastosEnvio)} · Gratis a partir de ${euros(CONFIG.envioGratis)}</div>
         </div>
 
-        <h2 style="margin-top:22px;font-size:18px">Ficha técnica</h2>
+        <h2 class="subtitulo">Ficha técnica</h2>
         <p class="small muted">Textura: ${esc(v.textura)} · Material: ${esc(producto.material)} · Edad recomendada: desde ${producto.edad_minima} años</p>
       </div>
     </div>`;
-
 }
 
 caja.addEventListener('click', (e) => {
@@ -119,7 +119,9 @@ caja.addEventListener('click', (e) => {
     guardarCarrito(carrito);
     registrarEvento('cart.item_added', { variante_id: v.id, sku: v.sku, cantidad, precio: v.precio });
     aviso('Añadido al carrito');
+    animarCarrito();
     pintar();
+    document.getElementById('anadir').classList.add('anim-ok');
   }
 });
 </script>
