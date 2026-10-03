@@ -7,33 +7,121 @@
 <title>Sensotoys · Catálogo</title>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap pagina-catalogo">
   <div id="pasillo"></div>
-  <h1>Catálogo</h1>
-  <p class="muted">Cada ficha indica color, textura, tamaño y unidades disponibles.</p>
-  <div class="opciones" id="filtros"></div>
-  <div class="grid" id="lista"><p class="cargando">Cargando…</p></div>
+
+  <header class="cat-cab tono-melocoton" id="cabecera-catalogo">
+    <p class="seccion-num" id="cat-kicker">La tienda</p>
+    <h1 class="titulo-xl cat-titulo" id="cat-titulo">Catálogo</h1>
+    <div class="cat-cab-pie">
+      <p class="cat-cuenta" id="cat-cuenta" aria-live="polite"></p>
+      <p class="entradilla cat-desc-pagina" id="cat-desc">Cada ficha indica color, textura, tamaño y unidades disponibles.</p>
+    </div>
+  </header>
+
+  <nav class="filtros-nav" aria-label="Filtrar por categoría">
+    <div class="filtros-pista" id="filtros"></div>
+  </nav>
+
+  <div class="cat-rejilla" id="lista"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, tarjetaProducto, param, esc, montarPasillo } from './js/ui.js';
+import { pintarMarco, tarjetaProducto, param, esc, montarPasillo, formaSVG } from './js/ui.js';
 import { categorias, productos } from './js/datos.js';
 
 await pintarMarco();
 montarPasillo(document.getElementById('pasillo'), 'catalogo');
 const filtro = param('categoria') || 'todos';
+
+// Aspecto de la cabecera según el filtro (la descripción de cada categoría viene de la base de datos)
+const TONOS = { todos: 'melocoton', squishies: 'rosa', fidgets: 'menta', sets: 'lavanda', limitadas: 'mantequilla' };
+const FORMAS = { todos: 1, squishies: 3, fidgets: 6, sets: 2, limitadas: 5 };
+const FOTOS = { todos: 'pulpo-reversible-rosa-azul', squishies: 'nube-mochi-aurora-menta-4x5', fidgets: 'anillos-magneticos-trio-azul-4x5', sets: 'set-calma-nocturna-4x5', limitadas: 'nube-mochi-aurora-lavanda-4x5' };
+const TEXTO_TODOS = 'Cada ficha indica color, textura, tamaño y unidades disponibles.';
+const TEXTO_LIMITADAS = 'Tiradas cortas con las unidades contadas: cuando se agotan, no vuelven.';
+
+// Indicador deslizante de la pastilla activa. Como cada filtro es una navegación,
+// se recuerda la posición anterior y se anima desde ella hasta la nueva.
+function colocarMarca(pista) {
+  const activa = pista.querySelector('[aria-current="page"]');
+  if (!activa) return;
+  const marca = document.createElement('span');
+  marca.className = 'filtros-marca';
+  marca.setAttribute('aria-hidden', 'true');
+  pista.prepend(marca);
+  pista.classList.add('con-marca');
+  const poner = (x, w) => { marca.style.setProperty('--mx', `${x}px`); marca.style.setProperty('--mw', `${w}px`); };
+  let previa = null;
+  try { previa = JSON.parse(sessionStorage.getItem('sensotoys_filtro_marca')); } catch {}
+  const x = activa.offsetLeft, w = activa.offsetWidth;
+  pista.scrollLeft = Math.max(0, x - (pista.clientWidth - w) / 2);   // centra la activa en móvil
+  if (previa && Number.isFinite(previa.x) && Number.isFinite(previa.w)) {
+    poner(previa.x, previa.w);
+    void marca.offsetWidth;
+    requestAnimationFrame(() => { marca.classList.add('anima'); poner(x, w); });
+  } else {
+    poner(x, w);
+    requestAnimationFrame(() => marca.classList.add('anima'));
+  }
+  const guardar = () => { try { sessionStorage.setItem('sensotoys_filtro_marca', JSON.stringify({ x: activa.offsetLeft, w: activa.offsetWidth })); } catch {} };
+  pista.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a || a === activa) return;
+    try { sessionStorage.setItem('sensotoys_filtro_marca', JSON.stringify({ x: a.offsetLeft, w: a.offsetWidth })); } catch {}
+  });
+  window.addEventListener('resize', () => { marca.classList.remove('anima'); poner(activa.offsetLeft, activa.offsetWidth); guardar(); });
+  guardar();
+}
+
 try {
   const [cats, prods] = await Promise.all([categorias(), productos()]);
   const filtros = [['todos', 'Todos'], ...cats.map((c) => [c.slug, c.nombre]), ['limitadas', 'Ediciones limitadas']];
-  document.getElementById('filtros').innerHTML = filtros.map(([slug, nombre]) =>
-    `<a class="pill ${slug === filtro ? 'on' : ''}" href="catalogo.html?categoria=${encodeURIComponent(slug)}">${esc(nombre)}</a>`).join('');
+  const pista = document.getElementById('filtros');
+  pista.innerHTML = filtros.map(([slug, nombre]) =>
+    `<a class="pill ${slug === filtro ? 'on' : ''}"${slug === filtro ? ' aria-current="page"' : ''} href="catalogo.html?categoria=${encodeURIComponent(slug)}">${esc(nombre)}</a>`).join('');
+  colocarMarca(pista);
 
   const lista = prods.filter((p) => filtro === 'todos'
     || (filtro === 'limitadas' ? p.es_edicion_limitada : p.categorias.slug === filtro));
+
+  // Cabecera editorial
+  const cat = cats.find((c) => c.slug === filtro);
+  const titulo = filtro === 'todos' ? 'Catálogo' : filtro === 'limitadas' ? 'Ediciones limitadas' : (cat?.nombre || 'Catálogo');
+  const descripcion = filtro === 'todos' ? TEXTO_TODOS : filtro === 'limitadas' ? TEXTO_LIMITADAS : (cat?.descripcion || TEXTO_TODOS);
+  const cab = document.getElementById('cabecera-catalogo');
+  cab.className = `cat-cab tono-${TONOS[filtro] || 'melocoton'}`;
+  cab.insertAdjacentHTML('afterbegin', formaSVG(FORMAS[filtro] || 1, 'cat-cab-forma')
+    + `<div class="recorte-blob cat-cab-foto"><img src="img/productos/${FOTOS[filtro] || FOTOS.todos}.webp" alt="" width="800" height="1000" decoding="async"></div>`);
+  document.getElementById('cat-titulo').textContent = titulo;
+  document.getElementById('cat-kicker').textContent = filtro === 'todos' ? 'La tienda' : filtro === 'limitadas' ? 'Tirada corta' : 'Categoría';
+  document.getElementById('cat-desc').textContent = descripcion;
+  document.getElementById('cat-cuenta').innerHTML =
+    `<span class="cat-cuenta-num">${lista.length}</span> ${lista.length === 1 ? 'pieza' : 'piezas'}`;
+  document.title = `Sensotoys · ${titulo}`;
+
   document.getElementById('lista').innerHTML = lista.length
     ? lista.map(tarjetaProducto).join('')
-    : '<p class="muted">No hay productos en esta categoría.</p>';
+    : `<div class="vacio cat-vacio">${formaSVG(4, `forma-${TONOS[filtro] || 'melocoton'}`)}
+        <h2>Aquí todavía no hay nada</h2>
+        <p>No encontramos piezas en esta categoría. Mira el catálogo completo y seguro que algo te llama.</p>
+        <a class="btn btn-primary" href="catalogo.html?categoria=todos">Ver todo el catálogo</a></div>`;
+
+  // Tarjetas anchas (1.ª y cada 5.ª): se completan con datos que ya trae productos() (descripción y material)
+  document.querySelectorAll('#lista > a.tarjeta').forEach((a, i) => {
+    if (i % 5 !== 0) return;
+    const p = lista[i];
+    const nombre = a.querySelector('.tarjeta-nombre');
+    const pie = a.querySelector('.tarjeta-pie');
+    if (!p || !nombre || !pie) return;
+    if (p.descripcion) nombre.insertAdjacentHTML('afterend', `<p class="tarjeta-apoyo">${esc(p.descripcion)}</p>`
+      + (p.material ? `<p class="tarjeta-material small"><span>Material</span> ${esc(p.material)}</p>` : ''));
+    pie.insertAdjacentHTML('beforebegin', '<span class="tarjeta-cta" aria-hidden="true">Ver pieza <span>→</span></span>');
+  });
 } catch (e) {
-  document.getElementById('lista').innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
+  document.getElementById('cat-cuenta').textContent = '';
+  document.getElementById('lista').innerHTML =
+    `<div class="error-caja cat-error" role="alert"><p><strong>No hemos podido cargar el catálogo.</strong></p><p>${esc(e.message)}</p>
+     <a class="btn btn-ghost" href="catalogo.html">Reintentar</a></div>`;
 }
 </script>
 </body>
