@@ -42,27 +42,30 @@ if (exigirSesion(usuario)) {
 function esqueleto() {
   caja.innerHTML = `
     <div class="admin-cab">
-      <div><h1>Back-office</h1><div class="muted">Consulta interna de pedidos, eventos e incidencias</div></div>
+      <div><p class="admin-sobre">Herramienta interna</p><h1 class="admin-titulo">Back-<em>office</em></h1><div class="muted">Consulta interna de pedidos, eventos e incidencias</div></div>
       <div class="opciones">
         <button class="btn btn-ghost" type="button" id="exp-eventos">Exportar eventos (JSON)</button>
         <button class="btn btn-ghost" type="button" id="exp-pedidos">Exportar pedidos (CSV)</button>
         <button class="btn btn-ghost" type="button" id="recargar">Recargar</button>
       </div>
     </div>
+    <nav class="admin-nav" aria-label="Secciones del back-office">
+      <a href="#t-kpis">Resumen</a><a href="#t-ranking">Ranking</a><a href="#t-stock">Stock</a><a href="#t-pedidos">Pedidos</a><a href="#t-eventos">Eventos</a><a href="#t-incid">Incidencias</a>
+    </nav>
     <div id="error-general" role="alert"></div>
-    <section aria-label="Indicadores"><div class="kpis" id="kpis"></div></section>
+    <section class="admin-seccion" aria-labelledby="t-kpis"><h2 class="solo-lector" id="t-kpis">Indicadores</h2><div class="kpis" id="kpis"></div></section>
 
-    <section aria-labelledby="t-ranking"><h2 class="titulo-seccion" id="t-ranking">Productos más vendidos</h2>
-      <div class="card scroll" id="ranking"></div></section>
+    <section class="admin-seccion" aria-labelledby="t-ranking"><h2 class="titulo-seccion" id="t-ranking">Productos más vendidos</h2>
+      <div class="card scroll admin-tabla" id="ranking"></div></section>
 
-    <section aria-labelledby="t-stock"><h2 class="titulo-seccion" id="t-stock">Stock bajo</h2>
+    <section class="admin-seccion" aria-labelledby="t-stock"><h2 class="titulo-seccion" id="t-stock">Stock bajo</h2>
       <div id="stock-msg" role="alert"></div>
-      <div class="card scroll" id="stock"></div>
+      <div class="card scroll admin-tabla" id="stock"></div>
       <details class="card detalles-card"><summary>Ver todas las variantes</summary>
         <div class="scroll" id="stock-todas"></div></details></section>
 
-    <section aria-labelledby="t-pedidos"><h2 class="titulo-seccion" id="t-pedidos">Pedidos</h2>
-      <div class="filtros" id="filtros">
+    <section class="admin-seccion" aria-labelledby="t-pedidos"><h2 class="titulo-seccion" id="t-pedidos">Pedidos</h2>
+      <div class="filtros card admin-filtros" id="filtros">
         <div><label for="f-codigo">Código</label><input id="f-codigo" placeholder="PED-2026-..." autocomplete="off"></div>
         <div><label for="f-estado">Estado</label><select id="f-estado"><option value="">Todos</option>
           ${Object.entries(ESTADOS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
@@ -70,21 +73,21 @@ function esqueleto() {
       </div>
       <div class="split">
         <div>
-          <div class="card scroll"><table class="tabla-admin"><caption class="solo-lector">Pedidos</caption>
+          <div class="card scroll admin-tabla"><table class="tabla-admin"><caption class="solo-lector">Pedidos</caption>
             <thead><tr><th scope="col">Pedido</th><th scope="col">Cliente</th><th scope="col">Fecha</th><th scope="col">Total</th><th scope="col">Estado</th></tr></thead>
             <tbody id="pedidos-tbody"></tbody></table></div>
           <div class="paginacion" id="paginacion"></div>
         </div>
-        <div class="card pad" id="detalle" aria-live="polite"></div>
+        <div class="card pad admin-detalle" id="detalle" aria-live="polite"></div>
       </div>
     </section>
 
-    <section aria-labelledby="t-eventos"><h2 class="titulo-seccion" id="t-eventos">Últimos eventos registrados</h2>
-      <div class="card scroll" id="eventos"></div></section>
+    <section class="admin-seccion" aria-labelledby="t-eventos"><h2 class="titulo-seccion" id="t-eventos">Últimos eventos registrados</h2>
+      <div class="card scroll admin-tabla" id="eventos"></div></section>
 
-    <section aria-labelledby="t-incid"><h2 class="titulo-seccion" id="t-incid">Incidencias y postventa</h2>
+    <section class="admin-seccion" aria-labelledby="t-incid"><h2 class="titulo-seccion" id="t-incid">Incidencias y postventa</h2>
       <div id="incid-msg" role="alert"></div>
-      <div class="card scroll" id="incidencias"></div></section>`;
+      <div class="card scroll admin-tabla" id="incidencias"></div></section>`;
   for (const id of ['error-general', 'kpis', 'ranking', 'stock-msg', 'stock', 'stock-todas', 'pedidos-tbody', 'paginacion', 'detalle', 'eventos', 'incid-msg', 'incidencias']) {
     el[id] = document.getElementById(id);
   }
@@ -107,10 +110,10 @@ async function cargarTodo() {
 // ---------- KPIs y ranking ----------
 function pintarKpis(r) {
   el.kpis.innerHTML = `
-    <div class="card pad kpi"><span class="small muted">Pedidos (pagos aceptados)</span><b>${r.pedidos}</b></div>
-    <div class="card pad kpi"><span class="small muted">Facturación</span><b>${euros(r.facturacion)}</b></div>
-    <div class="card pad kpi"><span class="small muted">Ticket medio</span><b>${euros(r.ticket_medio)}</b></div>
-    <div class="card pad kpi"><span class="small muted">% Pagos rechazados</span><b>${r.pct_rechazados}%</b></div>`;
+    <div class="card pad kpi kpi-1"><span class="small">Pedidos (pagos aceptados)</span><b>${r.pedidos}</b></div>
+    <div class="card pad kpi kpi-2"><span class="small">Facturación</span><b>${euros(r.facturacion)}</b></div>
+    <div class="card pad kpi kpi-3"><span class="small">Ticket medio</span><b>${euros(r.ticket_medio)}</b></div>
+    <div class="card pad kpi kpi-4"><span class="small">% Pagos rechazados</span><b>${r.pct_rechazados}%</b></div>`;
 }
 function pintarRanking(ranking) {
   el.ranking.innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Producto</th><th scope="col">Unidades</th><th scope="col">Importe</th></tr></thead><tbody>
@@ -134,7 +137,7 @@ function pintarStock() {
     ${bajo.map((v) => {
       const max = maxReponer(v);
       const nombre = `${v.producto} ${v.color} ${v.talla}`;
-      return `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td>${v.stock}</td>
+      return `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td><span class="stock-num stock-bajo">${v.stock}</span></td>
         <td>${v.es_edicion_limitada ? `<span class="badge">Edición limitada</span> <span class="small muted">(se pueden reponer ${max})</span>` : '—'}</td>
         <td>${max < 1 ? '<span class="small muted">Tirada completa</span>' : `<div class="celda-reponer">
           <label class="solo-lector" for="rep-${v.variante_id}">Unidades a reponer de ${esc(nombre)}</label>
@@ -143,7 +146,7 @@ function pintarStock() {
     }).join('') || '<tr><td colspan="5" class="muted">Sin variantes con stock bajo.</td></tr>'}</tbody></table>`;
 
   el['stock-todas'].innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Producto</th><th scope="col">Variante</th><th scope="col">SKU</th><th scope="col">Stock</th><th scope="col">Edición</th></tr></thead><tbody>
-    ${variantes.map((v) => `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td class="mono">${esc(v.sku)}</td><td>${v.stock}</td>
+    ${variantes.map((v) => `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td class="mono">${esc(v.sku)}</td><td><span class="stock-num">${v.stock}</span></td>
       <td>${v.es_edicion_limitada ? 'Limitada' : '—'}</td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -239,7 +242,7 @@ async function cargarIncidencias() {
       ${lista.map((i) => {
         const sig = SIGUIENTE[i.estado];
         return `<tr><td>${fecha(i.creado_en)}</td><td>${esc(i.perfiles?.email)}</td><td>${esc(i.pedidos?.codigo || '—')}</td>
-          <td>${esc(i.motivo)}</td><td class="msg">${esc(i.mensaje)}</td><td>${esc(ESTADO_INCIDENCIA[i.estado] || i.estado)}</td>
+          <td>${esc(i.motivo)}</td><td class="msg">${esc(i.mensaje)}</td><td><span class="st st-${esc(i.estado)}">${esc(ESTADO_INCIDENCIA[i.estado] || i.estado)}</span></td>
           <td>${sig ? `<button class="btn btn-ghost btn-fila" type="button" data-incidencia="${i.id}" data-a="${sig[0]}"
             aria-label="${sig[1]}: incidencia ${i.id}">${sig[1]}</button>` : '<span class="small muted">Cerrada</span>'}</td></tr>`;
       }).join('') || '<tr><td colspan="7" class="muted">Sin incidencias.</td></tr>'}</tbody></table>`;
