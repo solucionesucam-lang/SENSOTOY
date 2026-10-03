@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/estilos.css">
+<script src="js/transiciones.js"></script>
 <title>Sensotoys · Producto</title>
 </head>
 <body>
@@ -271,7 +272,8 @@ function elegirColor(nuevo, { desdeScroll = false } = {}) {
     const raiz = document.documentElement;
     raiz.classList.add('vt-galeria');
     const t = document.startViewTransition(aplicar);
-    t.finished.finally(() => raiz.classList.remove('vt-galeria'));
+    [t.ready, t.updateCallbackDone].forEach((pr) => pr.catch(() => {}));
+    t.finished.catch(() => {}).finally(() => raiz.classList.remove('vt-galeria'));
   } else aplicar();
 }
 
