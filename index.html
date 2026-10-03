@@ -5,36 +5,206 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Inicio</title>
+<meta name="description" content="Juguetes sensoriales en tiradas cortas: squishies, fidgets y sets que indican su textura, su tamaño y cuántas unidades quedan.">
 </head>
 <body>
-<main class="wrap">
-  <section class="hero">
-    <div>
-      <div class="kicker" id="kicker"></div>
-      <h1>Juguetes sensoriales que se coleccionan</h1>
-      <p class="lema">Pequeñas piezas para calmar, tocar y coleccionar.</p>
-      <p class="lead">Squishies y fidgets fabricados por tiradas cortas. Cada pieza indica su textura, su tamaño y cuántas unidades quedan de su edición.</p>
-      <a class="btn btn-primary" href="catalogo.html">Ver catálogo</a>
-      <a class="btn btn-ghost" href="catalogo.html?categoria=limitadas">Ediciones limitadas</a>
+<main class="libre" id="contenido-principal">
+
+  <!-- HERO -->
+  <section class="inicio-hero con-formas" aria-labelledby="titulo-inicio" data-formas="2:forma-mantequilla hf-fondo">
+    <div class="wrap rejilla-12 inicio-hero-in">
+      <div class="inicio-hero-texto col-7">
+        <p class="kicker inicio-kicker" id="kicker"></p>
+        <h1 class="inicio-titulo" id="titulo-inicio">
+          <span class="lin"><span>Juguetes que</span></span>
+          <span class="lin"><span>se <em>aprietan</em>,</span></span>
+          <span class="lin"><span>se giran y se</span></span>
+          <span class="lin"><span>coleccionan</span></span>
+        </h1>
+        <p class="entradilla inicio-entradilla">Squishies y fidgets fabricados por tiradas cortas. Cada pieza indica su textura, su tamaño y cuántas unidades quedan de su edición.</p>
+        <div class="inicio-botones">
+          <a class="btn btn-primary btn-grande" href="catalogo.html">Ver catálogo</a>
+          <a class="btn btn-ghost btn-grande" href="catalogo.html?categoria=limitadas">Ediciones limitadas</a>
+        </div>
+      </div>
+
+      <div class="inicio-collage con-formas col-5" data-formas="1:forma-lavanda hf-1;3:forma-menta hf-2;5:forma-rosa hf-3">
+        <div class="hc-item hc-a"><div class="hc-flota">
+          <div class="recorte-arco"><img src="img/productos/nube-mochi-aurora-rosa-4x5.webp" alt="Nube mochi Aurora rosa, un squishy blando y redondeado" width="800" height="1000" fetchpriority="high" decoding="async"></div>
+        </div></div>
+        <div class="hc-item hc-b"><div class="hc-flota">
+          <div class="recorte-blob"><img src="img/productos/pulpo-reversible-rosa-azul.webp" alt="Pulpo reversible rosa y azul" width="800" height="800" decoding="async"></div>
+        </div></div>
+        <div class="hc-item hc-c"><div class="hc-flota">
+          <div class="recorte-circulo"><img src="img/productos/anillos-magneticos-trio-azul-4x5.webp" alt="Trío de anillos magnéticos azules" width="800" height="1000" loading="lazy" decoding="async"></div>
+        </div></div>
+        <div class="hc-item hc-d">
+          <div class="foto-flotante forma-fluye"><img src="img/productos/pop-it-hexagono-rosa-4x5.webp" alt="Pop it hexagonal rosa" width="800" height="1000" loading="lazy" decoding="async"></div>
+        </div>
+        <svg class="hc-sello" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+          <circle cx="60" cy="60" r="58" fill="currentColor"/>
+          <defs><path id="sello-circulo" d="M60,60 m-41,0 a41,41 0 1,1 82,0 a41,41 0 1,1 -82,0"/></defs>
+          <text class="hc-sello-texto"><textPath href="#sello-circulo" textLength="252" lengthAdjust="spacing">tiradas cortas ✺ para tocar ✺</textPath></text>
+        </svg>
+      </div>
     </div>
-    <div class="photo photo-hero" id="fotoHero"><span class="sin-foto">[Foto de producto pendiente]</span></div>
   </section>
-  <h2 class="titulo-portada">Categorías</h2>
-  <div class="grid" id="categorias"><p class="cargando">Cargando…</p></div>
-  <h2 class="titulo-portada">Destacados</h2>
-  <div class="grid" id="destacados"><p class="cargando">Cargando…</p></div>
+
+  <!-- 01 DESTACADOS -->
+  <section class="seccion inicio-destacados" aria-labelledby="titulo-destacados">
+    <div class="wrap">
+      <p class="seccion-num" data-revelar>01 — Destacados</p>
+      <div class="inicio-cabecera-seccion">
+        <h2 class="titulo-xl" id="titulo-destacados" data-revelar>Lo que todos <em>quieren</em> tocar</h2>
+        <a class="btn btn-ghost" href="catalogo.html" data-revelar>Todo el catálogo →</a>
+      </div>
+      <div class="inicio-dest" id="destacados"><p class="cargando">Cargando…</p></div>
+    </div>
+  </section>
+
+  <!-- CINTA -->
+  <div class="inicio-cinta-caja"><div class="cinta inicio-cinta">
+    <div class="cinta-pista">
+      <div class="cinta-grupo">
+        <span class="cinta-item">Blando como un malvavisco</span>
+        <span class="cinta-item">Crujiente al presionar</span>
+        <span class="cinta-item">Suave al tacto</span>
+        <span class="cinta-item">Para manos inquietas</span>
+        <span class="cinta-item">Tiradas cortas</span>
+        <span class="cinta-item">Calma de bolsillo</span>
+      </div>
+      <div class="cinta-grupo" aria-hidden="true">
+        <span class="cinta-item">Blando como un malvavisco</span>
+        <span class="cinta-item">Crujiente al presionar</span>
+        <span class="cinta-item">Suave al tacto</span>
+        <span class="cinta-item">Para manos inquietas</span>
+        <span class="cinta-item">Tiradas cortas</span>
+        <span class="cinta-item">Calma de bolsillo</span>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- 02 CATEGORÍAS -->
+  <section class="seccion inicio-categorias" aria-labelledby="titulo-categorias">
+    <div class="wrap">
+      <p class="seccion-num" data-revelar>02 — Categorías</p>
+      <h2 class="titulo-xl" id="titulo-categorias" data-revelar>Elige cómo quieres <em>sentir</em></h2>
+      <div class="inicio-cats" id="categorias"><p class="cargando">Cargando…</p></div>
+    </div>
+  </section>
+
+  <!-- 03 POR QUÉ SENSORIAL -->
+  <section class="seccion inicio-porque" aria-labelledby="titulo-porque">
+    <div class="wrap rejilla-12">
+      <div class="porque-visual col-5">
+        <div class="ambiente porque-foto" data-revelar>
+          <img src="img/ambiente/ambiente-manos-squishy.webp" alt="Dos manos apretando un squishy blando de colores pastel" width="960" height="1280" loading="lazy" decoding="async">
+        </div>
+        <div class="foto-flotante forma-fluye porque-flota"><img src="img/productos/pan-de-leche-xl-4x5.webp" alt="Squishy pan de leche XL" width="800" height="1000" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="porque-texto col-6 ini-7">
+        <p class="seccion-num" data-revelar>03 — Por qué sensorial</p>
+        <h2 class="titulo-xl porque-titulo" id="titulo-porque" data-revelar>Hechos para las manos <em>inquietas</em></h2>
+        <ol class="porque-lista">
+          <li data-revelar>
+            <span class="porque-n" aria-hidden="true">01</span>
+            <div><h3>Textura</h3><p>Blanda y lenta, firme y crujiente, suave o con relieve. Cada pieza dice cómo se siente antes de que la toques.</p></div>
+          </li>
+          <li data-revelar>
+            <span class="porque-n" aria-hidden="true">02</span>
+            <div><h3>Tamaño</h3><p>Indicamos el tamaño de cada pieza para que sepas si cabe en la palma de la mano, en el bolsillo o sobre el escritorio.</p></div>
+          </li>
+          <li data-revelar>
+            <span class="porque-n" aria-hidden="true">03</span>
+            <div><h3>Tirada corta</h3><p>Fabricamos pocas unidades de cada edición y te contamos cuántas quedan. Lo que se acaba, se acaba.</p></div>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- BANDA DE CITA -->
+  <section class="wrap inicio-banda-cita" aria-labelledby="titulo-cita">
+    <div class="ambiente inicio-cita" data-revelar>
+      <img src="img/ambiente/ambiente-escritorio-calma.webp" alt="" width="1600" height="900" loading="lazy" decoding="async">
+      <div class="inicio-cita-texto">
+        <h2 class="titulo-xl" id="titulo-cita">Un escritorio más <em>tranquilo</em> cabe en una mano</h2>
+        <p>Cinco minutos de respirar, apretar y volver a empezar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 EDICIONES LIMITADAS -->
+  <section class="seccion inicio-limitadas" aria-labelledby="titulo-limitadas">
+    <div class="wrap">
+      <div class="banda banda-oscura inicio-lim con-formas" data-formas="4:forma-lavanda lim-forma">
+        <div class="lim-texto">
+          <p class="seccion-num" data-revelar>04 — Ediciones limitadas</p>
+          <h2 class="titulo-xl" id="titulo-limitadas" data-revelar>Cuando se acaban, <em>se acaban</em></h2>
+          <p class="entradilla" data-revelar>Series numeradas de pocas unidades. Cada colección muestra cuántas quedan para que decidas con calma, pero sin dormirte.</p>
+          <p class="lim-quedan" id="lim-quedan" data-revelar></p>
+          <a class="btn btn-grande" href="catalogo.html?categoria=limitadas" data-revelar>Ver ediciones limitadas</a>
+        </div>
+        <div class="lim-visual">
+          <div class="ambiente lim-ambiente" data-revelar>
+            <img src="img/ambiente/ambiente-rincon-nocturno.webp" alt="Rincón nocturno con luz cálida y juguetes sensoriales" width="1600" height="900" loading="lazy" decoding="async">
+          </div>
+          <div class="recorte-arco lim-arco"><img src="img/productos/set-calma-nocturna-4x5.webp" alt="Set Calma nocturna, edición limitada" width="800" height="1000" loading="lazy" decoding="async"></div>
+          <div class="recorte-circulo lim-circulo"><img src="img/productos/nube-mochi-aurora-lavanda-4x5.webp" alt="Nube mochi Aurora lavanda" width="800" height="1000" loading="lazy" decoding="async"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 <script type="module">
-import { pintarMarco, tarjetaProducto, esc, imgProducto } from './js/ui.js';
+import { pintarMarco, tarjetaProducto, esc, formaSVG } from './js/ui.js';
 import { categorias, productos, idsDestacados } from './js/datos.js';
+
+// Formas decorativas: data-formas="n:clase clase;n:clase"
+for (const el of document.querySelectorAll('[data-formas]')) {
+  el.insertAdjacentHTML('afterbegin', el.dataset.formas.split(';').map((f) => {
+    const [n, clases] = f.split(':');
+    return formaSVG(Number(n), clases);
+  }).join(''));
+}
+// Si falta una imagen de ambiente, queda el marcador pastel
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (img instanceof HTMLImageElement && img.closest('.ambiente')) img.remove();
+}, true);
+
+// Foto representativa por categoría (slug conocido) y forma del recorte
+const FOTO_CAT = {
+  squishies: { f: 'nube-mochi-aurora-menta-4x5', alt: 'Nube mochi Aurora menta' },
+  fidgets: { f: 'anillos-magneticos-trio-azul-4x5', alt: 'Trío de anillos magnéticos azules' },
+  sets: { f: 'set-calma-nocturna-4x5', alt: 'Set Calma nocturna' }
+};
+const COLORES = ['cat-rosa', 'cat-menta', 'cat-lavanda', 'cat-melocoton'];
+const BLOBS = ['forma-mantequilla', 'forma-cielo', 'forma-rosa', 'forma-lavanda'];
+const RECORTES = ['recorte-arco', 'recorte-blob', 'recorte-circulo', 'recorte-arco'];
+const num = (i) => String(i + 1).padStart(2, '0');
+
+function tarjetaCategoria(c, i, foto) {
+  const href = c.href ?? `catalogo.html?categoria=${encodeURIComponent(c.slug)}`;
+  const fotoHtml = foto ? `<span class="cat-foto ${RECORTES[i % 4]}"><img src="img/productos/${foto.f}.webp" alt="${esc(foto.alt)}" width="800" height="1000" loading="lazy" decoding="async"></span>` : '';
+  return `<a class="cat-tarjeta ${COLORES[i % 4]}" href="${href}" data-revelar>
+    ${formaSVG(i + 2, `cat-forma ${BLOBS[i % 4]}`)}
+    <span class="cat-num" aria-hidden="true">${num(i)}</span>
+    ${fotoHtml}
+    <div class="cat-texto"><h3 class="cat-nombre">${esc(c.nombre)}</h3><p class="cat-desc">${esc(c.descripcion)}</p></div>
+    <span class="cat-flecha" aria-hidden="true">→</span></a>`;
+}
 
 await pintarMarco();
 try {
   const [cats, prods, ids] = await Promise.all([categorias(), productos(), idsDestacados(4)]);
-  document.getElementById('categorias').innerHTML = cats.map((c, i) => `
-    <a class="card cat-${i % 4 + 1}" href="catalogo.html?categoria=${encodeURIComponent(c.slug)}">
-      <div class="pname cat-nombre">${esc(c.nombre)}</div>
-      <div class="small muted">${esc(c.descripcion)}</div></a>`).join('');
+  const fijas = [...cats.map((c) => ({ ...c, foto: FOTO_CAT[c.slug] })), {
+    slug: 'limitadas', href: 'catalogo.html?categoria=limitadas', nombre: 'Ediciones limitadas',
+    descripcion: 'Series numeradas de pocas unidades. Cuando se acaban, se acaban.',
+    foto: { f: 'nube-mochi-aurora-lavanda-4x5', alt: 'Nube mochi Aurora lavanda' }
+  }];
+  document.getElementById('categorias').innerHTML = fijas.map((c, i) => tarjetaCategoria(c, i, c.foto)).join('');
   // Destacados: ediciones limitadas primero y, después, los más vendidos (lo decide la base de datos)
   const destacados = ids.map((id) => prods.find((p) => p.id === id)).filter(Boolean);
   document.getElementById('destacados').innerHTML = destacados.map(tarjetaProducto).join('')
@@ -43,7 +213,7 @@ try {
   if (aurora) {
     const quedan = aurora.variantes.reduce((a, v) => a + v.stock, 0);
     document.getElementById('kicker').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion}`;
-    document.getElementById('fotoHero').innerHTML = imgProducto(aurora.slug, aurora.variantes[0].color, aurora.nombre);
+    document.getElementById('lim-quedan').textContent = `${aurora.nombre}: quedan ${quedan} de ${aurora.unidades_edicion} unidades.`;
   }
 } catch (e) {
   document.getElementById('categorias').innerHTML = `<p class="error-caja">No se pudo conectar con la base de datos: ${esc(e.message)}</p>`;
