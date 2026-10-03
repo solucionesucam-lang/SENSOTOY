@@ -4,13 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/estilos.css">
+<script src="js/transiciones.js"></script>
 <title>Sensotoys · Ayuda y postventa</title>
 </head>
 <body>
-<main class="wrap wrap-estrecho">
-  <h1>Ayuda y postventa</h1>
-  <p class="muted">Cuéntanos qué ha pasado. La solicitud se guarda en la base de datos.</p>
-  <div id="contenido"><p class="cargando">Cargando…</p></div>
+<main class="wrap pagina-soporte">
+  <header class="sop-cab con-formas">
+    <svg class="forma forma-3 forma-melocoton sop-forma-a" viewBox="0 0 200 200" aria-hidden="true" focusable="false"><path fill="currentColor" d="M166 145.2C156 164.2 126.7 193.1 106.9 193.7C87.1 194.4 63.1 166.8 47.1 148.9C31.2 131 8.5 105.6 11 86.4C13.5 67.3 41.5 46.6 62.1 34.1C82.7 21.7 117.4 4.1 134.8 11.6C152.3 19.2 161.7 57.2 166.9 79.5C172.1 101.7 176 126.1 166 145.2Z"/></svg>
+    <p class="seccion-num">Ayuda y postventa</p>
+    <h1 class="sop-titulo">Cuéntanos <em>qué ha pasado</em></h1>
+    <p class="entradilla">La solicitud se guarda en la base de datos y la revisamos lo antes posible.</p>
+  </header>
+  <div class="sop-cuerpo">
+    <div id="contenido"><p class="cargando">Cargando…</p></div>
+    <aside class="sop-lateral" aria-label="Preguntas frecuentes">
+      <div class="sop-collage" aria-hidden="true">
+        <div class="recorte-arco sop-arco"><img src="img/productos/nube-mochi-aurora-rosa-4x5.webp" alt="" width="800" height="1000" loading="lazy" decoding="async"></div>
+        <div class="recorte-circulo sop-circulo"><img src="img/productos/pop-it-hexagono-verde-4x5.webp" alt="" width="800" height="1000" loading="lazy" decoding="async"></div>
+      </div>
+      <h2 class="sop-h2">Antes de <em>escribir</em></h2>
+      <div class="sop-faq">
+        <details class="ficha-detalle"><summary>¿Qué pasa con mi pedido al enviar la solicitud?</summary>
+          <div class="ficha-detalle-cuerpo"><p class="muted">Solo «Producto defectuoso» y «Retraso en el envío» pasan el pedido a «Con incidencia». Con los demás motivos la solicitud se registra y el pedido no cambia.</p></div></details>
+        <details class="ficha-detalle"><summary>¿Puedo escribir sin elegir un pedido?</summary>
+          <div class="ficha-detalle-cuerpo"><p class="muted">Sí. Deja «Consulta general (sin pedido)» y cuéntanos tu duda.</p></div></details>
+        <details class="ficha-detalle"><summary>¿Se ha cobrado algo de verdad?</summary>
+          <div class="ficha-detalle-cuerpo"><p class="muted">No. Sensotoys es un prototipo académico: los datos y los pagos son simulados.</p></div></details>
+      </div>
+    </aside>
+  </div>
 </main>
 <script type="module">
 import { pintarMarco, exigirSesion, param, aviso, esc } from './js/ui.js';
@@ -25,21 +47,33 @@ if (exigirSesion(usuario)) {
   const pedidos = await misPedidos().catch(() => []);
   const elegido = param('pedido');
   caja.innerHTML = `
-    <form id="form" class="card pad pila-s" novalidate>
+    <form id="form" class="card pad pila-s sop-form" novalidate>
       <div><label for="pedido">Pedido</label><select id="pedido">
         <option value="">Consulta general (sin pedido)</option>
         ${pedidos.map((p) => `<option value="${p.id}" ${String(p.id) === elegido ? 'selected' : ''}>${esc(p.codigo)}</option>`).join('')}
       </select></div>
-      <div><label for="motivo">Motivo</label><select id="motivo">
-        <option value="">Elige un motivo</option>
-        ${Object.entries(MOTIVOS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}
-      </select><div class="err" id="err-motivo"></div>
-        <p class="small muted">Solo «Producto defectuoso» y «Retraso en el envío» pasan el pedido a estado «Con incidencia». Con los demás motivos la solicitud se registra y el pedido no cambia.</p></div>
+      <fieldset class="sop-motivos" aria-describedby="nota-motivo err-motivo">
+        <legend>Motivo</legend>
+        <div class="sop-opciones">
+          ${Object.entries(MOTIVOS).map(([k, t], i) => `<label class="sop-opcion tono-${i}"><input type="radio" name="motivo-opcion" value="${k}"><span>${t}</span></label>`).join('')}
+        </div>
+        <select id="motivo" hidden>
+          <option value="">Elige un motivo</option>
+          ${Object.entries(MOTIVOS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}
+        </select>
+        <div class="err" id="err-motivo"></div>
+        <p class="small muted sop-nota" id="nota-motivo">Solo «Producto defectuoso» y «Retraso en el envío» pasan el pedido a estado «Con incidencia». Con los demás motivos la solicitud se registra y el pedido no cambia.</p>
+      </fieldset>
       <div><label for="mensaje">Descripción</label><textarea id="mensaje" rows="5" maxlength="1000"></textarea>
         <div class="err" id="err-mensaje"></div></div>
       <div id="error-general" class="error-caja" role="alert" hidden></div>
-      <button class="btn btn-primary" id="enviar">Enviar solicitud</button>
+      <button class="btn btn-primary btn-grande" id="enviar">Enviar solicitud</button>
     </form>`;
+
+  // Los radios son solo la cara visible del select#motivo, que sigue siendo quien guarda el valor
+  document.querySelectorAll('input[name="motivo-opcion"]').forEach((r) => r.addEventListener('change', () => {
+    document.getElementById('motivo').value = r.value;
+  }));
 
   document.getElementById('form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -52,7 +86,7 @@ if (exigirSesion(usuario)) {
     boton.disabled = true;
     try {
       await crearIncidencia({ motivo, mensaje, pedidoId: document.getElementById('pedido').value || null });
-      caja.innerHTML = '<div class="card pad"><h2>Solicitud registrada</h2><p class="muted">Te responderemos lo antes posible.</p><a class="btn btn-primary" href="index.html">Volver al inicio</a></div>';
+      caja.innerHTML = '<div class="card pad sop-gracias"><h2>Solicitud registrada</h2><p class="muted">Te responderemos lo antes posible.</p><a class="btn btn-primary" href="index.html">Volver al inicio</a></div>';
       aviso('Incidencia guardada');
     } catch (err) {
       const box = document.getElementById('error-general');

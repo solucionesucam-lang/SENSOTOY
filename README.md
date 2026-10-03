@@ -14,7 +14,7 @@ Tarea 1 de Soluciones Informáticas para la Empresa (UCAM).
 
 La web se publica como páginas estáticas en GitHub Pages y llama a Supabase desde el navegador con la clave pública. La seguridad la dan las políticas RLS y las funciones de la base de datos, no el navegador.
 
-Sin frameworks. La única librería externa es `supabase-js`, fijada en la versión **2.117.2** (import desde jsDelivr en `js/datos.js`). Las fuentes Fraunces y Karla están en local, en `fonts/` (`fraunces.woff2` y `karla.woff2`, cargadas con `@font-face` en `css/estilos.css`), sin peticiones a Google Fonts.
+Sin frameworks. La única librería externa es `supabase-js`, fijada en la versión **2.117.2** (import desde jsDelivr en `js/datos.js`). Las fuentes Fraunces (redonda y cursiva) y Bricolage Grotesque están en local, en `fonts/` (`fraunces.woff2`, `fraunces-italic.woff2` y `bricolage.woff2`, licencia SIL OFL 1.1, cargadas con `@font-face` en `css/estilos.css`), sin peticiones a Google Fonts.
 
 ## Estructura
 
@@ -30,7 +30,7 @@ login.html        Entrada con cuentas de prueba
 admin.html        Back-office: pedidos, estados, eventos, incidencias, stock, exportación
 config.js         URL y clave pública de Supabase
 css/estilos.css
-fonts/            Fuentes locales (Fraunces y Karla)
+fonts/            Fuentes locales (Fraunces y Bricolage Grotesque, OFL)
 img/productos/    Fotos de producto (<slug>-<color>.webp, con <slug>.webp como alternativa)
 js/datos.js       Capa de acceso a datos
 js/ui.js          Cabecera, pie, carrito y utilidades

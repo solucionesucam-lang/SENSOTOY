@@ -4,17 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/estilos.css">
+<script src="js/transiciones.js"></script>
 <title>Sensotoys · Pedido</title>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap pagina-pedido">
   <div id="pasillo"></div>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge, aviso, montarPasillo } from './js/ui.js';
-import { pedidoPorCodigo, misPedidos, cancelarMiPedido } from './js/datos.js';
+import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge, aviso, montarPasillo, imgProducto, formaSVG } from './js/ui.js';
+import { pedidoPorCodigo, misPedidos, cancelarMiPedido, productos } from './js/datos.js';
 
+const ORDEN = ['creado', 'pagado', 'preparacion', 'enviado'];
+const PASO = { creado: 'Creado', pagado: 'Pagado', preparacion: 'En preparación', enviado: 'Enviado', cancelado: 'Cancelado', incidencia: 'Con incidencia' };
+
+let catalogo = [];
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 const codigo = param('codigo');
@@ -27,12 +32,22 @@ if (exigirSesion(usuario)) {
 // Sin código en la URL: lista de "Mis pedidos"
 async function lista() {
   const pedidos = await misPedidos();
-  caja.innerHTML = `<h1>Mis pedidos</h1>
-    ${pedidos.length === 0 ? '<p class="muted">Todavía no tienes pedidos.</p>' : `
-    <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
-      ${pedidos.map((p) => `<tr><td><a href="pedido.html?codigo=${encodeURIComponent(p.codigo)}">${esc(p.codigo)}</a></td><td>${fecha(p.creado_en)}</td>
-        <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')}
-    </tbody></table></div>`}`;
+  caja.innerHTML = `<header class="ped-cab">
+      <p class="seccion-num">Tu cuenta</p>
+      <h1 class="ped-titulo">Mis <em>pedidos</em></h1>
+      ${pedidos.length ? `<p class="entradilla">${pedidos.length === 1 ? 'Tienes un pedido' : `Tienes ${pedidos.length} pedidos`}. Pulsa uno para ver su estado, sus productos y el pago.</p>` : ''}
+    </header>
+    ${pedidos.length === 0 ? `<div class="vacio ped-vacio">${formaSVG(2, 'forma-fluye forma-lavanda')}<h2>Todavía no tienes pedidos</h2><p>Cuando compres algo, aparecerá aquí.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>` : `
+    <ul class="ped-lista">
+      ${pedidos.map((p, i) => `<li class="ped-fila-caja" data-revelar><a class="ped-fila tono-${i % 6}" href="pedido.html?codigo=${encodeURIComponent(p.codigo)}">
+        <span class="ped-fila-forma" aria-hidden="true">${formaSVG(i + 1, 'forma-quieta')}</span>
+        <span class="ped-fila-codigo"><span class="ped-etq">Pedido</span><span class="ped-codigo">${esc(p.codigo)}</span></span>
+        <span class="ped-fila-fecha"><span class="ped-etq">Fecha</span>${fecha(p.creado_en)}</span>
+        <span class="ped-fila-estado">${estadoBadge(p.estado)}</span>
+        <span class="ped-fila-total"><span class="ped-etq">Total</span><span class="ped-importe">${euros(p.total)}</span></span>
+        <span class="ped-flecha" aria-hidden="true">→</span>
+      </a></li>`).join('')}
+    </ul>`}`;
 }
 
 function mensajeEstado(estado, pago) {
@@ -64,28 +79,60 @@ function pasilloConfirmado(p) {
     nuevo = sessionStorage.getItem('sensotoys_pedido_nuevo');
     if (nuevo === p.codigo) sessionStorage.removeItem('sensotoys_pedido_nuevo');
   } catch {}
-  if (nuevo === p.codigo) montarPasillo(document.getElementById('pasillo'), 'confirmado', { sinEnlaces: ['envio'] });
+  if (nuevo !== p.codigo) return false;
+  montarPasillo(document.getElementById('pasillo'), 'confirmado', { sinEnlaces: ['envio'] });
+  return true;
+}
+
+
+// Línea de tiempo: pedidos normales recorren creado, pagado, preparación y enviado;
+// cancelado e incidencia se salen del camino y se muestran como último paso
+function lineaTiempo(estado) {
+  const pasos = ORDEN.includes(estado) ? ORDEN : ['creado', estado];
+  const actual = pasos.indexOf(estado);
+  return `<ol class="ped-tiempo" aria-label="Estado del pedido">${pasos.map((k, i) => {
+    const cls = i < actual ? 'hecho' : i === actual ? 'actual' : 'futuro';
+    const marca = i < actual ? '✓' : (k === 'cancelado' ? '×' : k === 'incidencia' ? '!' : i + 1);
+    return `<li class="ped-paso ped-paso-${cls} ped-paso-${k}"${i === actual ? ' aria-current="step"' : ''}><span class="ped-paso-num" aria-hidden="true">${marca}</span><span class="ped-paso-txt">${PASO[k]}${cls === 'futuro' ? '<span class="visualmente-oculto"> (pendiente)</span>' : ''}</span></li>`;
+  }).join('')}</ol>`;
+}
+
+function miniatura(l, i) {
+  const color = String(l.descripcion_variante ?? '').split('·')[0].trim();
+  const pr = catalogo.find((x) => x.nombre === l.nombre_producto);
+  const v = pr?.variantes?.find((x) => x.color === color) || pr?.variantes?.[0];
+  const img = pr && v ? imgProducto(pr.slug, v.color, l.nombre_producto) : '';
+  const real = img && !img.includes('sin-foto');
+  return `<div class="foto foto-mini ped-mini tono-${i % 6}">${real ? img : formaSVG(i + 2, 'forma-quieta')}</div>`;
 }
 
 // Con código: detalle de un pedido (RLS impide ver pedidos ajenos)
 async function detalle() {
   const p = await pedidoPorCodigo(codigo);
-  if (!p) { caja.innerHTML = '<h1>Pedido no encontrado</h1><p class="muted">No existe o no es tuyo.</p>'; return; }
-  pasilloConfirmado(p);
+  if (!p) { caja.innerHTML = '<div class="vacio ped-vacio"><h1 class="ped-titulo">Pedido no <em>encontrado</em></h1><p class="muted">No existe o no es tuyo.</p><a class="btn btn-primary" href="pedido.html">Mis pedidos</a></div>'; return; }
+  const celebra = pasilloConfirmado(p);
+  catalogo = await productos().catch(() => []);
   const pago = p.pagos[0];
   const [titular, texto] = mensajeEstado(p.estado, pago);
   caja.innerHTML = `
-    <div class="split">
-      <div>
-        <h1>${titular}</h1>
-        <p class="lead">${texto}</p>
-        <div class="card scroll mt-m"><table>
-          <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
-          ${p.lineas_pedido.map((l) => `<tr><td>${esc(l.nombre_producto)}<div class="small muted">${esc(l.descripcion_variante)}</div></td>
-            <td>${l.cantidad}</td><td>${euros(l.precio_unitario)}</td><td>${euros(l.importe)}</td></tr>`).join('')}
-        </tbody></table></div>
-      </div>
-      <div class="card pad sum">
+    <header class="ped-cab ped-cab-detalle ped-estado-${esc(p.estado)}${celebra ? ' ped-celebra' : ''}">
+      ${celebra ? `<div class="ped-celebracion" aria-hidden="true">${formaSVG(1, 'ped-b1 forma-rosa')}${formaSVG(4, 'ped-b2 forma-menta')}${formaSVG(6, 'ped-b3 forma-mantequilla')}
+        <svg class="ped-check" viewBox="0 0 64 64" focusable="false"><circle class="ped-check-aro" cx="32" cy="32" r="29"/><path class="ped-check-marca" d="M18 33l9 9 19-21"/></svg></div>` : ''}
+      <p class="seccion-num">${celebra ? 'Gracias por tu compra' : 'Pedido'} ${esc(p.codigo)}</p>
+      <h1 class="ped-titulo">${titular}</h1>
+      <p class="entradilla">${texto}</p>
+    </header>
+    ${lineaTiempo(p.estado)}
+    <div class="ped-cuerpo">
+      <section class="ped-productos" aria-labelledby="ped-h-prod">
+        <h2 id="ped-h-prod" class="ped-h2">Tu <em>pedido</em></h2>
+        <ul class="ped-lineas">
+          ${p.lineas_pedido.map((l, i) => `<li class="ped-linea">${miniatura(l, i)}
+            <div class="ped-linea-info"><span class="pname">${esc(l.nombre_producto)}</span><span class="small muted">${esc(l.descripcion_variante)}</span></div>
+            <div class="ped-linea-cuenta"><span class="small muted">${l.cantidad} × ${euros(l.precio_unitario)}</span><span class="ped-linea-importe">${euros(l.importe)}</span></div></li>`).join('')}
+        </ul>
+      </section>
+      <div class="card pad sum pedido-resumen">
         <div class="small muted">Número de pedido</div>
         <div class="num-pedido">${esc(p.codigo)}</div>
         <div><span>Estado</span>${estadoBadge(p.estado)}</div>
@@ -100,7 +147,7 @@ async function detalle() {
         <div class="small muted aparte">Envío a: ${esc(p.envio_nombre)}, ${esc(p.envio_direccion)}, ${esc(p.envio_cp)} ${esc(p.envio_ciudad)} (${esc(p.envio_provincia)})</div>
       </div>
     </div>
-    <div class="opciones mt-m">
+    <div class="opciones ped-acciones mt-m">
       <a class="btn btn-primary" href="catalogo.html">Seguir comprando</a>
       ${p.estado === 'creado' ? '<button class="btn btn-ghost" id="cancelar" type="button">Cancelar pedido</button>' : ''}
       <a class="btn btn-ghost" href="soporte.html?pedido=${p.id}">Abrir una incidencia</a>

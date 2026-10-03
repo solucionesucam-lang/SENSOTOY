@@ -4,16 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="css/estilos.css">
+  <script src="js/transiciones.js"></script>
   <title>Sensotoys · Finalizar pedido</title>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap pagina-checkout" id="contenido-principal">
   <div id="pasillo"></div>
-  <h1>Finalizar pedido</h1>
+  <header class="cp-cab">
+    <p class="seccion-num">Último tramo</p>
+    <h1 class="cp-titulo">Finalizar <em>pedido</em></h1>
+    <p class="cp-cuenta">Cuéntanos dónde lo llevamos y cómo quieres pagar. Dos minutos y listo.</p>
+  </header>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, montarPasillo, configLista, CONFIG } from './js/ui.js';
+import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, montarPasillo, configLista, CONFIG, imgProducto } from './js/ui.js';
 import { variantesPorId, crearPedido, registrarEvento, validarCupon } from './js/datos.js';
 
 const usuario = await pintarMarco();
@@ -33,7 +38,7 @@ async function iniciar(carrito) {
   const variantes = await variantesPorId(carrito.map((l) => l.variante_id));
   carrito = lineasValidas(variantes);
   if (carrito.length === 0) {
-    caja.innerHTML = '<div class="card pad"><p>Los productos de tu carrito ya no están disponibles.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>';
+    caja.innerHTML = '<div class="vacio"><h2>Tu carrito ya no tiene <em>productos</em></h2><p>Los productos de tu carrito ya no están disponibles.</p><a class="btn btn-primary btn-grande" href="catalogo.html">Ir al catálogo</a></div>';
     return;
   }
   const subtotal = carrito.reduce((a, l) => a + variantes.find((v) => v.id === l.variante_id).precio * l.cantidad, 0);
@@ -41,57 +46,66 @@ async function iniciar(carrito) {
   registrarEvento('checkout.started', { lineas: carrito.length, subtotal });
 
   caja.innerHTML = `
-    <form id="form" class="split" novalidate>
-      <div>
-        <div class="card pad">
-          <h2>Datos de envío</h2>
-          <div class="form2">
-            ${campo('nombre', 'Nombre y apellidos', usuario.nombre, 'autocomplete="name"')}
-            ${campo('direccion', 'Dirección', '', 'autocomplete="street-address"')}
-            ${campo('cp', 'Código postal', '', 'inputmode="numeric" maxlength="5" autocomplete="postal-code"')}
-            ${campo('ciudad', 'Ciudad', '')}
-            ${campo('provincia', 'Provincia', '')}
+    <form id="form" class="cp-grid" novalidate>
+      <div class="cp-columna">
+        <section class="card cp-bloque" aria-labelledby="titulo-envio">
+          <h2 id="titulo-envio"><span class="cp-num" aria-hidden="true">1</span>Datos de <em>envío</em></h2>
+          <div class="form2 cp-form2">
+            ${campo('nombre', 'Nombre y apellidos', usuario.nombre, 'autocomplete="name"', 'cp-ancho')}
+            ${campo('direccion', 'Dirección', '', 'autocomplete="street-address"', 'cp-ancho')}
+            ${campo('cp', 'Código postal', '', 'inputmode="numeric" maxlength="5" autocomplete="postal-code"', 'cp-cp')}
+            ${campo('ciudad', 'Ciudad', '', 'autocomplete="address-level2"', 'cp-ciudad')}
+            ${campo('provincia', 'Provincia', '', 'autocomplete="address-level1"', 'cp-ancho')}
           </div>
-        </div>
-        <div class="card pad mt-m">
-          <div class="row"><h2>Métodos de pago</h2><span class="badge">Método recomendado</span></div>
-          <div class="opciones">
-            <label class="chip chip-radio on"><input type="radio" name="metodo" value="tarjeta" checked> Tarjeta</label>
-            <label class="chip chip-radio"><input type="radio" name="metodo" value="contrareembolso"> Contra reembolso</label>
-          </div>
-          <div id="bloque-tarjeta">
+        </section>
+        <section class="card cp-bloque" aria-labelledby="titulo-pago">
+          <div class="row cp-fila-titulo"><h2 id="titulo-pago"><span class="cp-num" aria-hidden="true">2</span>Métodos de <em>pago</em></h2><span class="badge">Método recomendado</span></div>
+          <fieldset class="opciones cp-metodos">
+            <legend class="visualmente-oculto">Método de pago</legend>
+            <label class="chip chip-radio cp-metodo on"><input type="radio" name="metodo" value="tarjeta" checked>
+              <span class="cp-metodo-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 10h19M6.5 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+              <span class="cp-metodo-texto"><strong>Tarjeta</strong><small>Pago simulado al instante</small></span></label>
+            <label class="chip chip-radio cp-metodo"><input type="radio" name="metodo" value="contrareembolso">
+              <span class="cp-metodo-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" focusable="false"><path d="M3 8.5L12 4l9 4.5v8L12 20l-9-3.5z M3 8.5L12 13l9-4.5M12 13v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+              <span class="cp-metodo-texto"><strong>Contra reembolso</strong><small>Pagas al recibir el paquete</small></span></label>
+          </fieldset>
+          <div id="bloque-tarjeta" class="cp-tarjeta">
             ${campo('tarjeta', 'Número de tarjeta', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
             <p class="small muted">Solo se guardan los 4 últimos dígitos.</p>
           </div>
-        </div>
+        </section>
       </div>
-      <div>
-        <div class="card pad">
-          <h2>Tu pedido</h2>
+      <aside class="resumen cp-resumen" aria-labelledby="titulo-pedido">
+        <h2 id="titulo-pedido">Tu pedido</h2>
+        <ul class="cp-items" tabindex="0" aria-label="Productos de tu pedido">
           ${carrito.map((l) => {
             const v = variantes.find((x) => x.id === l.variante_id);
-            return `<div class="row small"><span>${esc(v.productos.nombre)} · ${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span><strong>${euros(v.precio * l.cantidad)}</strong></div>`;
+            return `<li class="cp-item">
+              <div class="foto-mini cp-item-foto" data-bg="${esc(v.color_hex)}">${imgProducto(v.productos.slug, v.color, v.productos.nombre)}<span class="cp-item-cant" aria-hidden="true">${l.cantidad}</span></div>
+              <div class="cp-item-txt"><span class="cp-item-nombre">${esc(v.productos.nombre)}</span>
+                <span class="small cp-item-det">${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span></div>
+              <strong class="cp-item-precio">${euros(v.precio * l.cantidad)}</strong></li>`;
           }).join('')}
-          <div class="mt-m">
-            <label for="cupon">Cupón (opcional)</label>
-            <div class="fila-cupon">
-              <input id="cupon" name="cupon" placeholder="BIENVENIDA10" autocomplete="off">
-              <button type="button" id="validar-cupon" class="btn">Validar</button>
-            </div>
-            <div id="mensaje-cupon" class="msg-cupon small" role="status"></div>
+        </ul>
+        <div class="cp-cupon">
+          <label for="cupon">Cupón (opcional)</label>
+          <div class="fila-cupon">
+            <input id="cupon" name="cupon" placeholder="BIENVENIDA10" autocomplete="off" aria-describedby="mensaje-cupon">
+            <button type="button" id="validar-cupon" class="btn btn-ghost">Validar</button>
           </div>
-          <div class="sum mt-m">
-            <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
-            <div id="fila-descuento" hidden><span>Descuento</span><span id="importe-descuento"></span></div>
-            <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
-            <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
-          </div>
-          <p class="small muted">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
+          <div id="mensaje-cupon" class="msg-cupon small" role="status"></div>
         </div>
+        <div class="sum">
+          <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
+          <div id="fila-descuento" hidden><span>Descuento</span><span id="importe-descuento"></span></div>
+          <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
+          <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
+        </div>
+        <p class="small cp-nota">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
         <div id="error-general" class="error-caja separada" role="alert" hidden></div>
-        <button class="btn btn-primary btn-bloque" id="pagar" type="submit">Confirmar y pagar</button>
-        <p class="small muted">No se realizará ningún cobro real</p>
-      </div>
+        <button class="btn btn-primary btn-grande btn-bloque cp-pagar" id="pagar" type="submit">Confirmar y pagar</button>
+        <p class="small cp-nota cp-sin-cobro">No se realizará ningún cobro real</p>
+      </aside>
     </form>`;
 
   const form = document.getElementById('form');
@@ -161,9 +175,9 @@ async function iniciar(carrito) {
   form.addEventListener('submit', (e) => { e.preventDefault(); enviar(form, carrito); });
 }
 
-function campo(id, texto, valor, extra = '') {
-  return `<div><label for="${id}">${texto}</label>
-    <input id="${id}" name="${id}" value="${esc(valor)}" ${extra}><div class="err" id="err-${id}"></div></div>`;
+function campo(id, texto, valor, extra = '', clase = '') {
+  return `<div class="campo cp-campo ${clase}"><label for="${id}">${texto}</label>
+    <input id="${id}" name="${id}" value="${esc(valor)}" aria-describedby="err-${id}" aria-invalid="false" ${extra}><div class="err" id="err-${id}"></div></div>`;
 }
 
 // Validación en el navegador: solo para avisar rápido al usuario.
@@ -188,10 +202,12 @@ async function enviar(form, carrito) {
   };
   form.querySelectorAll('.err').forEach((x) => (x.textContent = ''));
   form.querySelectorAll('.mal').forEach((x) => x.classList.remove('mal'));
+  form.querySelectorAll('[aria-invalid="true"]').forEach((x) => x.setAttribute('aria-invalid', 'false'));
   const errores = validar(d);
   for (const [id, msg] of Object.entries(errores)) {
     document.getElementById('err-' + id).textContent = msg;
     f[id].classList.add('mal');
+    f[id].setAttribute('aria-invalid', 'true');
   }
   if (Object.keys(errores).length) { form.querySelector('.mal').focus(); return; }
 
