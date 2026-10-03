@@ -7,19 +7,29 @@
 <title>Sensotoys · Producto</title>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap pagina-ficha">
   <div id="pasillo"></div>
   <div id="ficha"><p class="cargando">Cargando…</p></div>
+  <section id="relacionados" class="ficha-relacionados" aria-labelledby="rel-titulo" hidden>
+    <p class="seccion-num">Más cosquillas</p>
+    <h2 id="rel-titulo" class="titulo-seccion">También te <em>puede gustar</em></h2>
+    <div class="ficha-rel-lista" id="rel-lista"></div>
+  </section>
 </main>
 <script type="module">
 import { pintarMarco, euros, esc, param, aviso, leerCarrito, guardarCarrito, CONFIG, configLista, imgProducto,
-         montarPasillo, recordarProducto, animarCarrito } from './js/ui.js';
-import { productoPorSlug, registrarEvento } from './js/datos.js';
+         montarPasillo, recordarProducto, animarCarrito, marcarFotoTransicion, formaSVG, tarjetaProducto } from './js/ui.js';
+import { productoPorSlug, productos, registrarEvento } from './js/datos.js';
 
 await pintarMarco();
 montarPasillo(document.getElementById('pasillo'), 'producto');
 const caja = document.getElementById('ficha');
 let producto, color, talla;
+
+const consultaQuieta = window.matchMedia('(prefers-reduced-motion: reduce)');
+const consultaMovil = window.matchMedia('(max-width: 859.98px)');
+const sinMovimiento = () => consultaQuieta.matches;
+const HEX = /^#[0-9a-f]{6}$/i;
 
 try {
   if (!configLista()) throw new Error('No se pudo cargar la configuración de la tienda.');
@@ -27,89 +37,391 @@ try {
 } catch (e) {
   caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
 }
-if (producto === null) caja.innerHTML = '<h1>Producto no encontrado</h1><a href="catalogo.html">Volver al catálogo</a>';
+if (producto === null) {
+  caja.innerHTML = `<div class="vacio">${formaSVG(3, 'forma-fluye forma-lavanda')}
+    <h1>Producto no encontrado</h1><p>Puede que ya no exista o que el enlace esté mal escrito.</p>
+    <a class="btn btn-primary" href="catalogo.html">Volver al catálogo</a></div>`;
+}
+
+// Referencias a nodos (se rellenan en montar())
+let ref = {};
+let nombresColor = [];
+let colorHex = new Map();
+let precioMostrado = null;
+let rafPrecio = 0;
+let temporizadorConfirmacion = 0;
 
 if (producto) {
-  document.title = 'Sensotoys · ' + producto.nombre;
-  recordarProducto(producto.slug);
-  // Variante inicial: la primera con stock
-  const inicial = producto.variantes.find((v) => v.stock > 0) || producto.variantes[0];
-  color = inicial.color; talla = inicial.talla;
-  registrarEvento('product.viewed', { producto_id: producto.id, producto: producto.slug, sku: inicial.sku });
-  pintar();
+  if (!producto.variantes?.length) {
+    caja.innerHTML = '<p class="error-caja">Este producto todavía no tiene variantes disponibles.</p>';
+  } else {
+    document.title = 'Sensotoys · ' + producto.nombre;
+    recordarProducto(producto.slug);
+    // Variante inicial: la primera con stock
+    const inicial = producto.variantes.find((v) => v.stock > 0) || producto.variantes[0];
+    color = inicial.color; talla = inicial.talla;
+    registrarEvento('product.viewed', { producto_id: producto.id, producto: producto.slug, sku: inicial.sku });
+    montar();
+    cargarRelacionados();
+  }
 }
 
 function varianteElegida() {
   return producto.variantes.find((v) => v.color === color && v.talla === talla);
 }
 
-function pintar() {
+// ---------- Estructura (se pinta una sola vez) ----------
+function montar() {
+  colorHex = new Map(producto.variantes.map((x) => [x.color, x.color_hex]));
+  nombresColor = [...colorHex.keys()];
+  const varios = nombresColor.length > 1;
   const v = varianteElegida();
-  const colores = [...new Map(producto.variantes.map((x) => [x.color, x.color_hex]))];
-  const tallas = producto.variantes.filter((x) => x.color === color);
-  const carritoActual = leerCarrito();
-  const enCarrito = carritoActual.find((l) => l.variante_id === v.id)?.cantidad || 0;
-  const enProducto = carritoActual.filter((l) => producto.variantes.some((x) => x.id === l.variante_id))
-    .reduce((a, l) => a + l.cantidad, 0);
-  const max = Math.max(0, Math.min(CONFIG.maxPorProducto - enProducto, v.stock - enCarrito));
-  const stockTotal = producto.variantes.reduce((a, x) => a + x.stock, 0);
 
   caja.innerHTML = `
-    <div class="small muted migas"><a href="catalogo.html">Catálogo</a> /
-      <a href="catalogo.html?categoria=${encodeURIComponent(producto.categorias.slug)}">${esc(producto.categorias.nombre)}</a> / ${esc(producto.nombre)}</div>
-    <div class="split">
-      <div class="photo photo-ficha" data-bg="${esc(v.color_hex)}">${imgProducto(producto.slug, color, producto.nombre)}</div>
+    <nav class="ficha-migas migas" aria-label="Miga de pan">
+      <a href="catalogo.html">Catálogo</a><span aria-hidden="true"> / </span>
+      <a href="catalogo.html?categoria=${encodeURIComponent(producto.categorias.slug)}">${esc(producto.categorias.nombre)}</a><span aria-hidden="true"> / </span>
+      <span aria-current="page">${esc(producto.nombre)}</span>
+    </nav>
 
-      <div>
-        ${producto.es_edicion_limitada ? `<span class="badge">Edición limitada · quedan ${stockTotal} de ${producto.unidades_edicion}</span>` : ''}
-        <h1 class="titulo-aparte">${esc(producto.nombre)}</h1>
-        <p class="muted">${esc(producto.descripcion)}</p>
-
-        <label>Color: <span class="dato">${esc(color)}</span></label>
-        <div class="opciones">${colores.map(([nombre, hex]) =>
-          `<button class="dot ${nombre === color ? 'on' : ''}" data-bg="${esc(hex)}" data-color="${esc(nombre)}"
-             aria-label="Color ${esc(nombre)}" aria-pressed="${nombre === color}"></button>`).join('')}</div>
-
-        <label>Tamaño</label>
-        <div class="opciones">${tallas.map((x) =>
-          `<button class="chip ${x.talla === talla ? 'on' : ''}" data-talla="${esc(x.talla)}" aria-pressed="${x.talla === talla}">
-             ${esc(x.talla)}${x.medida_cm ? ' · ' + x.medida_cm + ' cm' : ''}</button>`).join('')}</div>
-
-        <div class="card pad pila-s">
-          <div><span class="price">${euros(v.precio)}</span> <span class="small muted">IVA del 21 % incluido</span></div>
-          <div class="small">${v.stock > 0 ? `${v.stock} unidades de esta variante · Ref. ${esc(v.sku)}` : 'Agotada'}</div>
-          <div class="fila-cantidad">
-            <label for="cantidad">Cantidad</label>
-            <input id="cantidad" class="corto" type="number" min="1" max="${max}" value="1" ${max === 0 ? 'disabled' : ''}>
-            <span class="small muted">Máximo ${CONFIG.maxPorProducto} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}</span>
+    <div class="ficha">
+      <div class="galeria">
+        <div class="galeria-marco" id="marco">
+          ${formaSVG(1, 'ficha-blob')}
+          ${formaSVG(4, 'ficha-blob ficha-blob-2 forma-lavanda')}
+          <div class="galeria-principal" id="principal">
+            <div class="galeria-pista" id="pista" role="group" aria-label="Fotos de ${esc(producto.nombre)}">
+              ${nombresColor.map((c) => `<div class="galeria-slide foto" data-color="${esc(c)}" data-bg="${esc(colorHex.get(c))}">${imgProducto(producto.slug, c, producto.nombre)}</div>`).join('')}
+            </div>
+            <span class="galeria-etiqueta" aria-hidden="true" id="etiqueta-foto"></span>
           </div>
-          <div class="err" id="error" role="alert"></div>
-          <button class="btn btn-primary" id="anadir" ${max === 0 ? 'disabled' : ''}>${v.stock === 0 ? 'Agotado' : 'Añadir al carrito'}</button>
-          <div class="small muted">Envío ${euros(CONFIG.gastosEnvio)} · Gratis a partir de ${euros(CONFIG.envioGratis)}</div>
+        </div>
+        ${varios ? `<div class="galeria-miniaturas" role="group" aria-label="Elegir foto por color">
+          ${nombresColor.map((c) => `<button type="button" class="galeria-mini" data-color="${esc(c)}" data-bg="${esc(colorHex.get(c))}" aria-label="Ver ${esc(c)}" aria-pressed="false">
+            ${imgProducto(producto.slug, c, producto.nombre)}</button>`).join('')}
+        </div>` : ''}
+      </div>
+
+      <div class="compra">
+        <div class="ficha-meta">
+          <a class="etiqueta ficha-categoria" href="catalogo.html?categoria=${encodeURIComponent(producto.categorias.slug)}">${esc(producto.categorias.nombre)}</a>
+          ${producto.es_edicion_limitada ? '<span class="badge insignia">Edición limitada</span>' : ''}
+        </div>
+        <h1 class="ficha-titulo">${esc(producto.nombre)}</h1>
+
+        <div class="ficha-precio-bloque">
+          <span class="price ficha-precio" id="precio" aria-hidden="true">${euros(v.precio)}</span>
+          <span class="small muted ficha-iva">IVA del 21 % incluido</span>
+          <span class="visualmente-oculto" id="precio-sr" role="status"></span>
         </div>
 
-        <h2 class="subtitulo">Ficha técnica</h2>
-        <p class="small muted">Textura: ${esc(v.textura)} · Material: ${esc(producto.material)} · Edad recomendada: desde ${producto.edad_minima} años</p>
+        <div class="ficha-stock" id="stock" role="status"></div>
+
+        <p class="ficha-desc muted">${esc(producto.descripcion)}</p>
+
+        <fieldset class="ficha-campo">
+          <legend>Color: <span class="dato" id="color-nombre"></span></legend>
+          <div class="selector-color" id="colores">${nombresColor.map((c) => {
+            const sin = !producto.variantes.some((x) => x.color === c && x.stock > 0);
+            return `<button type="button" class="dot${sin ? ' agotado' : ''}" data-bg="${esc(colorHex.get(c))}" data-color="${esc(c)}"
+              aria-label="Color ${esc(c)}${sin ? ' (agotado)' : ''}" aria-pressed="false" title="${esc(c)}${sin ? ' · agotado' : ''}"></button>`;
+          }).join('')}</div>
+        </fieldset>
+
+        <fieldset class="ficha-campo">
+          <legend>Tamaño</legend>
+          <div class="selector-talla" id="tallas"></div>
+          <p class="small muted ficha-nota" id="nota-tallas" hidden>Las tallas tachadas están agotadas en este color.</p>
+        </fieldset>
+
+        <div class="ficha-comprar">
+          <div class="fila-cantidad">
+            <label for="cantidad">Cantidad</label>
+            <div class="cantidad">
+              <button type="button" data-menos aria-label="Una unidad menos">−</button>
+              <input id="cantidad" class="corto" type="number" inputmode="numeric" min="1" max="1" value="1">
+              <button type="button" data-mas aria-label="Una unidad más">+</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-grande ficha-anadir" id="anadir" type="button">
+            <span class="ficha-anadir-txt">Añadir al carrito</span>
+            <svg class="ficha-check" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <p class="small muted ficha-limite" id="limite"></p>
+        <div class="err" id="error" role="alert"></div>
+        <div class="ficha-confirmacion" id="confirmacion" role="status"></div>
+        <p class="small muted ficha-envio">Envío ${euros(CONFIG.gastosEnvio)} · Gratis a partir de ${euros(CONFIG.envioGratis)}</p>
+
+        <div class="ficha-detalles">
+          <details class="ficha-detalle" open>
+            <summary>Detalles del producto</summary>
+            <div class="ficha-detalle-cuerpo">
+              <dl class="ficha-datos" id="datos"></dl>
+            </div>
+          </details>
+          <details class="ficha-detalle">
+            <summary>Envío y devoluciones</summary>
+            <div class="ficha-detalle-cuerpo">
+              <p class="small">Envío ${euros(CONFIG.gastosEnvio)}; gratis a partir de ${euros(CONFIG.envioGratis)}. Puedes ver el desglose completo antes de pagar en el carrito.</p>
+            </div>
+          </details>
+        </div>
       </div>
+    </div>
+
+    <div class="compra-barra" id="barra" inert>
+      <div class="compra-barra-info"><span class="compra-barra-nombre">${esc(producto.nombre)}</span><span class="price compra-barra-precio" id="barra-precio"></span></div>
+      <button class="btn btn-primary" id="barra-anadir" type="button"><span class="ficha-anadir-txt">Añadir</span></button>
     </div>`;
+
+  ref = {
+    marco: document.getElementById('marco'), principal: document.getElementById('principal'), pista: document.getElementById('pista'),
+    slides: [...caja.querySelectorAll('.galeria-slide')], minis: [...caja.querySelectorAll('.galeria-mini')],
+    etiqueta: document.getElementById('etiqueta-foto'), colores: [...caja.querySelectorAll('#colores .dot')],
+    colorNombre: document.getElementById('color-nombre'), tallas: document.getElementById('tallas'),
+    notaTallas: document.getElementById('nota-tallas'), precio: document.getElementById('precio'),
+    precioSr: document.getElementById('precio-sr'), stock: document.getElementById('stock'),
+    cantidad: document.getElementById('cantidad'), limite: document.getElementById('limite'),
+    error: document.getElementById('error'), confirmacion: document.getElementById('confirmacion'),
+    anadir: document.getElementById('anadir'), datos: document.getElementById('datos'),
+    barra: document.getElementById('barra'), barraPrecio: document.getElementById('barra-precio'),
+    barraAnadir: document.getElementById('barra-anadir')
+  };
+
+  // La foto principal es la que "vuela" desde la tarjeta
+  marcarFotoTransicion(ref.principal);
+  const activa = ref.slides.find((s) => s.dataset.color === color);
+  const imgActiva = activa?.querySelector('img');
+  if (imgActiva) { imgActiva.loading = 'eager'; imgActiva.fetchPriority = 'high'; }
+
+  pintarColor();
+  renderTallas();
+  actualizarCompra(false);
+  ajustarModoGaleria();
+  if (consultaMovil.matches) irASlide(false);
+  consultaMovil.addEventListener('change', ajustarModoGaleria);
+  vigilarBarra();
+  if (ref.slides.length > 1) vigilarScroll();
 }
 
+// ---------- Galería ----------
+function ajustarModoGaleria() {
+  // En móvil la pista se desliza: necesita foco de teclado para poder moverla con las flechas
+  const desliza = consultaMovil.matches && ref.slides.length > 1;
+  if (desliza) { ref.pista.tabIndex = 0; ref.pista.setAttribute('role', 'group'); }
+  else ref.pista.removeAttribute('tabindex');
+  if (consultaMovil.matches) irASlide(false);
+}
+function irASlide(suave) {
+  const i = Math.max(0, nombresColor.indexOf(color));
+  ref.pista.scrollTo({ left: i * ref.pista.clientWidth, behavior: suave && !sinMovimiento() ? 'smooth' : 'auto' });
+}
+function vigilarScroll() {
+  let t = 0;
+  ref.pista.addEventListener('scroll', () => {
+    if (!consultaMovil.matches) return;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const i = Math.round(ref.pista.scrollLeft / (ref.pista.clientWidth || 1));
+      const c = nombresColor[i];
+      if (c && c !== color) elegirColor(c, { desdeScroll: true });
+    }, 110);
+  }, { passive: true });
+}
+function pintarColor(animar = false) {
+  const hex = colorHex.get(color);
+  if (HEX.test(hex)) ref.marco.style.setProperty('--color-variante', hex);
+  ref.slides.forEach((s) => {
+    const es = s.dataset.color === color;
+    if (es && animar && !consultaMovil.matches) {
+      s.classList.remove('entra'); void s.offsetWidth; s.classList.add('entra');
+    }
+    s.classList.toggle('activa', es);
+  });
+  ref.minis.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === color)));
+  ref.colores.forEach((b) => {
+    const es = b.dataset.color === color;
+    b.setAttribute('aria-pressed', String(es));
+    b.classList.toggle('on', es);
+  });
+  ref.colorNombre.textContent = color;
+  ref.etiqueta.textContent = color;
+}
+
+function tallaPara(c) {
+  const del = producto.variantes.filter((x) => x.color === c);
+  return (del.find((x) => x.talla === talla && x.stock > 0) || del.find((x) => x.stock > 0)
+    || del.find((x) => x.talla === talla) || del[0]).talla;
+}
+
+function elegirColor(nuevo, { desdeScroll = false } = {}) {
+  if (nuevo === color) return;
+  const aplicar = () => {
+    color = nuevo;
+    talla = tallaPara(color);
+    pintarColor(true);
+    renderTallas();
+    actualizarCompra(true);
+    if (consultaMovil.matches && !desdeScroll) irASlide(true);
+  };
+  const usaVT = !consultaMovil.matches && !sinMovimiento() && document.startViewTransition
+    && ref.principal.style.viewTransitionName === 'foto-producto';
+  if (usaVT) {
+    const raiz = document.documentElement;
+    raiz.classList.add('vt-galeria');
+    const t = document.startViewTransition(aplicar);
+    t.finished.finally(() => raiz.classList.remove('vt-galeria'));
+  } else aplicar();
+}
+
+// ---------- Tallas ----------
+function renderTallas() {
+  const tallas = producto.variantes.filter((x) => x.color === color);
+  ref.tallas.innerHTML = tallas.map((x) => {
+    const sin = x.stock === 0;
+    const off = sin && x.talla !== talla;
+    return `<button type="button" class="chip talla${x.talla === talla ? ' on' : ''}${sin ? ' sin-stock' : ''}" data-talla="${esc(x.talla)}"
+      aria-pressed="${x.talla === talla}" ${off ? 'disabled' : ''} ${sin ? `title="${esc(x.talla)}: agotada en este color"` : ''}>
+      <span class="talla-nombre">${esc(x.talla)}</span>
+      ${x.medida_cm ? `<span class="talla-medida">${esc(x.medida_cm)} cm</span>` : ''}
+      ${sin ? '<span class="talla-agotada">Agotada</span>' : ''}</button>`;
+  }).join('');
+  ref.notaTallas.hidden = !tallas.some((x) => x.stock === 0);
+}
+function marcarTalla() {
+  ref.tallas.querySelectorAll('[data-talla]').forEach((b) => {
+    const es = b.dataset.talla === talla;
+    b.classList.toggle('on', es);
+    b.setAttribute('aria-pressed', String(es));
+  });
+}
+
+// ---------- Compra: precio, stock, cantidad, botón ----------
+function calcularMax(v) {
+  const carrito = leerCarrito();
+  const enCarrito = carrito.find((l) => l.variante_id === v.id)?.cantidad || 0;
+  const enProducto = carrito.filter((l) => producto.variantes.some((x) => x.id === l.variante_id))
+    .reduce((a, l) => a + l.cantidad, 0);
+  return { enProducto, max: Math.max(0, Math.min(CONFIG.maxPorProducto - enProducto, v.stock - enCarrito)) };
+}
+
+function animarPrecio(desde, hasta) {
+  cancelAnimationFrame(rafPrecio);
+  const el = ref.precio;
+  if (desde === null || desde === hasta || sinMovimiento()) { el.textContent = euros(hasta); return; }
+  el.classList.remove('cambia'); void el.offsetWidth; el.classList.add('cambia');
+  const t0 = performance.now(), dur = 520;
+  const paso = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = euros(k < 1 ? desde + (hasta - desde) * e : hasta);
+    if (k < 1) rafPrecio = requestAnimationFrame(paso);
+  };
+  rafPrecio = requestAnimationFrame(paso);
+}
+
+function actualizarCompra(animar) {
+  const v = varianteElegida();
+  const { enProducto, max } = calcularMax(v);
+  const stockTotal = producto.variantes.reduce((a, x) => a + x.stock, 0);
+
+  animarPrecio(animar ? precioMostrado : null, Number(v.precio));
+  precioMostrado = Number(v.precio);
+  ref.precioSr.textContent = `Precio ${euros(v.precio)}`;
+  ref.barraPrecio.textContent = euros(v.precio);
+
+  const pct = producto.es_edicion_limitada && producto.unidades_edicion
+    ? Math.max(0, Math.min(100, Math.round(stockTotal / producto.unidades_edicion * 100))) : 0;
+  ref.stock.innerHTML = `
+    ${producto.es_edicion_limitada ? `<p class="ficha-stock-limitada"><strong>Quedan ${stockTotal} de ${producto.unidades_edicion}</strong> <span class="muted">de la edición limitada</span></p>
+      <div class="ficha-barra" aria-hidden="true"><span class="ficha-barra-relleno"></span></div>` : ''}
+    <p class="small ficha-stock-var${v.stock > 0 && v.stock <= 5 ? ' poco' : ''}">${v.stock > 0
+      ? `${v.stock <= 5 ? `¡Últimas ${v.stock} unidades!` : `${v.stock} unidades de esta variante`} · <span class="ficha-ref">Ref. ${esc(v.sku)}</span>`
+      : 'Agotada'}</p>`;
+  ref.stock.querySelector('.ficha-barra')?.style.setProperty('--pct', pct);
+
+  ref.cantidad.min = 1;
+  ref.cantidad.max = max;
+  ref.cantidad.value = 1;
+  ref.cantidad.disabled = max === 0;
+  ref.cantidad.classList.remove('mal');
+  ref.error.textContent = '';
+  actualizarPasos();
+
+  ref.limite.textContent = `Máximo ${CONFIG.maxPorProducto} por producto${enProducto ? ` (ya tienes ${enProducto})` : ''}`;
+
+  pintarBoton(v, max);
+
+  const filas = [
+    ['Material', producto.material],
+    ['Textura', v.textura],
+    ['Edad recomendada', `desde ${producto.edad_minima} años`],
+    ['Medida', v.medida_cm ? `${v.medida_cm} cm` : null],
+    ['Color', color],
+    ['Referencia', v.sku]
+  ].filter(([, valor]) => valor !== null && valor !== undefined && valor !== '');
+  ref.datos.innerHTML = filas.map(([k, valor]) => `<div><dt>${esc(k)}</dt><dd>${esc(valor)}</dd></div>`).join('');
+}
+
+function pintarBoton(v = varianteElegida(), max = calcularMax(v).max) {
+  const texto = v.stock === 0 ? 'Agotado' : max === 0 ? 'Máximo alcanzado' : 'Añadir al carrito';
+  for (const b of [ref.anadir, ref.barraAnadir]) {
+    b.disabled = max === 0;
+    b.classList.remove('confirmado');
+    b.querySelector('.ficha-anadir-txt').textContent = b === ref.barraAnadir && max > 0 ? 'Añadir' : texto;
+  }
+}
+
+function actualizarPasos() {
+  const n = parseInt(ref.cantidad.value, 10) || 1;
+  const max = Number(ref.cantidad.max);
+  caja.querySelector('[data-menos]').disabled = ref.cantidad.disabled || n <= 1;
+  caja.querySelector('[data-mas]').disabled = ref.cantidad.disabled || n >= max;
+}
+
+function confirmar(cantidad, v) {
+  clearTimeout(temporizadorConfirmacion);
+  for (const b of [ref.anadir, ref.barraAnadir]) {
+    b.classList.remove('anim-ok'); void b.offsetWidth; b.classList.add('anim-ok');
+    b.classList.add('confirmado');
+    b.querySelector('.ficha-anadir-txt').textContent = '¡Añadido!';
+  }
+  ref.confirmacion.innerHTML = `Añadido al carrito: ${cantidad} × ${esc(producto.nombre)} (${esc(v.color)}, ${esc(v.talla)}). <a href="carrito.html">Ver carrito</a>`;
+  temporizadorConfirmacion = setTimeout(() => pintarBoton(), 2200);
+}
+
+// ---------- Barra inferior fija (móvil) ----------
+function vigilarBarra() {
+  if (!('IntersectionObserver' in window)) return;
+  let botonVisible = true, pieVisible = false;
+  const pinta = () => { ref.barra.classList.toggle('visible', !botonVisible && !pieVisible); ref.barra.inert = botonVisible || pieVisible; };
+  new IntersectionObserver(([e]) => { botonVisible = e.isIntersecting; pinta(); }).observe(ref.anadir);
+  const pie = document.querySelector('.pie, footer.foot');
+  if (pie) new IntersectionObserver(([e]) => { pieVisible = e.isIntersecting; pinta(); }).observe(pie);
+}
+
+// ---------- Eventos ----------
 caja.addEventListener('click', (e) => {
   const b = e.target.closest('button');
-  if (!b) return;
+  if (!b || b.disabled) return;
   if (b.dataset.color) {
-    color = b.dataset.color;
-    // Si la talla elegida no existe en este color, se coge la primera disponible
-    if (!varianteElegida()) talla = producto.variantes.find((v) => v.color === color).talla;
-    pintar();
+    elegirColor(b.dataset.color);
   } else if (b.dataset.talla) {
-    talla = b.dataset.talla; pintar();
-  } else if (b.id === 'anadir') {
-    const input = document.getElementById('cantidad');
+    talla = b.dataset.talla; marcarTalla(); actualizarCompra(true);
+  } else if (b.hasAttribute('data-menos') || b.hasAttribute('data-mas')) {
+    const max = Number(ref.cantidad.max);
+    const n = (parseInt(ref.cantidad.value, 10) || 1) + (b.hasAttribute('data-mas') ? 1 : -1);
+    ref.cantidad.value = Math.min(Math.max(n, 1), max);
+    ref.cantidad.classList.remove('mal'); ref.error.textContent = '';
+    actualizarPasos();
+  } else if (b.id === 'anadir' || b.id === 'barra-anadir') {
+    const input = ref.cantidad;
     const cantidad = parseInt(input.value, 10);
     if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > Number(input.max)) {
-      document.getElementById('error').textContent = `Elige una cantidad entre 1 y ${input.max}.`;
+      ref.error.textContent = `Elige una cantidad entre 1 y ${input.max}.`;
       input.classList.add('mal');
+      if (b.id === 'barra-anadir') input.scrollIntoView({ block: 'center', behavior: sinMovimiento() ? 'auto' : 'smooth' });
       return;
     }
     const v = varianteElegida();
@@ -120,10 +432,38 @@ caja.addEventListener('click', (e) => {
     registrarEvento('cart.item_added', { variante_id: v.id, sku: v.sku, cantidad, precio: v.precio });
     aviso('Añadido al carrito');
     animarCarrito();
-    pintar();
-    document.getElementById('anadir').classList.add('anim-ok');
+    actualizarCompra(false);
+    confirmar(cantidad, v);
   }
 });
+caja.addEventListener('input', (e) => {
+  if (e.target !== ref.cantidad) return;
+  ref.cantidad.classList.remove('mal'); ref.error.textContent = '';
+  actualizarPasos();
+});
+caja.addEventListener('change', (e) => {
+  if (e.target !== ref.cantidad) return;
+  const max = Number(ref.cantidad.max);
+  const n = parseInt(ref.cantidad.value, 10);
+  if (Number.isInteger(n) && max > 0) ref.cantidad.value = Math.min(Math.max(n, 1), max);
+  actualizarPasos();
+});
+
+// ---------- También te puede gustar (reutiliza productos(), sin consultas nuevas) ----------
+async function cargarRelacionados() {
+  try {
+    const todos = await productos();
+    const otros = todos.filter((p) => p.slug !== producto.slug && p.variantes?.length);
+    const misma = otros.filter((p) => p.categorias?.slug === producto.categorias.slug);
+    const resto = otros.filter((p) => p.categorias?.slug !== producto.categorias.slug);
+    const elegidos = [...misma, ...resto].slice(0, 3);
+    if (!elegidos.length) return;
+    document.getElementById('rel-lista').innerHTML = elegidos.map(tarjetaProducto).join('');
+    document.getElementById('relacionados').hidden = false;
+  } catch (e) {
+    console.warn('No se pudieron cargar productos relacionados:', e.message);
+  }
+}
 </script>
 </body>
 </html>
