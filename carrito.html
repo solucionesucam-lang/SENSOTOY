@@ -7,20 +7,28 @@
 <title>Sensotoys · Carrito</title>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap pagina-carrito" id="contenido-principal">
   <div id="pasillo"></div>
-  <h1>Mi carrito de juguetes</h1>
+  <header class="cp-cab">
+    <div class="cp-deco" id="cp-deco" aria-hidden="true"></div>
+    <p class="seccion-num">Tu bolsa</p>
+    <h1 class="cp-titulo">Mi carrito de <em>juguetes</em></h1>
+    <p class="cp-cuenta" id="cuenta-carrito" role="status"></p>
+  </header>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
 import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, CONFIG, configLista,
-         imgProducto, montarPasillo } from './js/ui.js';
+         imgProducto, montarPasillo, formaSVG } from './js/ui.js';
 import { variantesPorId } from './js/datos.js';
 
 await pintarMarco();
 montarPasillo(document.getElementById('pasillo'), 'carrito');
 const caja = document.getElementById('contenido');
+const cuenta = document.getElementById('cuenta-carrito');
+document.getElementById('cp-deco').innerHTML = formaSVG(3, 'forma-melocoton') + formaSVG(5, 'forma-lavanda');
 let variantes = [];
+let primera = true;   // la entrada escalonada solo en la primera pintura
 
 async function cargar() {
   try {
@@ -61,42 +69,77 @@ function problemas(carrito) {
 function pintar() {
   const carrito = leerCarrito();
   if (carrito.length === 0) {
-    caja.innerHTML = '<div class="card pad"><p>Tu carrito está vacío.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>';
+    cuenta.textContent = '';
+    const flota = (slug, color) => imgProducto(slug, color, '').replace(/alt="[^"]*"/, 'alt=""');
+    caja.innerHTML = `<div class="vacio cp-vacio">
+      ${formaSVG(2, 'forma-rosa cp-vacio-blob-a')}${formaSVG(6, 'forma-menta cp-vacio-blob-b')}${formaSVG(4, 'forma-mantequilla cp-vacio-blob-c')}
+      <div class="foto-flotante cp-f1" aria-hidden="true">${flota('nube-mochi-aurora', 'Rosa')}</div>
+      <div class="foto-flotante cp-f2" aria-hidden="true">${flota('pop-it-hexagono', 'Azul')}</div>
+      <div class="foto-flotante cp-f3" aria-hidden="true">${flota('set-calma-nocturna', '')}</div>
+      <div class="cp-vacio-texto">
+        <h2>Tu carrito está <em>vacío</em></h2>
+        <p>Todavía no has apretado nada. Date una vuelta por el catálogo y encuentra tu próximo juguete favorito.</p>
+        <a class="btn btn-primary btn-grande" href="catalogo.html">Ir al catálogo</a>
+      </div></div>`;
     return;
   }
   let subtotal = 0;
   const filas = carrito.map((l, i) => {
     const v = variante(l);
     subtotal += v.precio * l.cantidad;
-    return `<div class="linea">
-      <div class="photo photo-linea" data-bg="${esc(v.color_hex)}">${imgProducto(v.productos.slug, v.color, v.productos.nombre)}</div>
-      <div><a class="pname pname-enlace" href="producto.html?slug=${encodeURIComponent(v.productos.slug)}">${esc(v.productos.nombre)}</a>
-        <div class="small muted">${esc(v.color)} · Talla ${esc(v.talla)} · ${euros(v.precio)}/ud.</div>
-        ${l.cantidad > v.stock ? `<div class="err">Solo quedan ${v.stock}</div>` : ''}
-        <button class="link-btn small sin-margen" data-quitar="${i}">Eliminar</button></div>
-      <div class="qty"><button data-i="${i}" data-d="-1" aria-label="Quitar una">−</button>
-        <span>${l.cantidad}</span><button data-i="${i}" data-d="1" aria-label="Añadir una">+</button></div>
-      <strong>${euros(v.precio * l.cantidad)}</strong></div>`;
+    const nombre = esc(v.productos.nombre);
+    return `<li class="card linea-carrito cp-linea">
+      <a class="cp-foto-enlace" href="producto.html?slug=${encodeURIComponent(v.productos.slug)}" tabindex="-1" aria-hidden="true">
+        <div class="foto-mini cp-foto" data-bg="${esc(v.color_hex)}">${imgProducto(v.productos.slug, v.color, v.productos.nombre)}</div></a>
+      <div class="cp-info">
+        <a class="pname pname-enlace cp-nombre" href="producto.html?slug=${encodeURIComponent(v.productos.slug)}">${nombre}</a>
+        <p class="cp-variante"><span class="cp-muestra" data-bg="${esc(v.color_hex)}" aria-hidden="true"></span>${esc(v.color)} · Talla ${esc(v.talla)}</p>
+        <p class="cp-unidad small muted">${euros(v.precio)}/ud.</p>
+        ${l.cantidad > v.stock ? `<div class="err cp-aviso-stock">Solo quedan ${v.stock}</div>` : ''}
+      </div>
+      <div class="cp-acciones">
+        <div class="qty cp-qty" role="group" aria-label="Cantidad de ${nombre}">
+          <button type="button" data-i="${i}" data-d="-1" aria-label="Quitar una">−</button>
+          <span aria-live="polite">${l.cantidad}</span>
+          <button type="button" data-i="${i}" data-d="1" aria-label="Añadir una">+</button></div>
+        <button type="button" class="cp-quitar" data-quitar="${i}" aria-label="Eliminar ${nombre} del carrito">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><g class="cp-tapa"><path d="M4 7h16M9.5 7V4.8h5V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M6 7.5l.8 11.2a1.5 1.5 0 0 0 1.5 1.3h7.4a1.5 1.5 0 0 0 1.5-1.3L18 7.5M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Eliminar</span></button>
+      </div>
+      <strong class="cp-precio">${euros(v.precio * l.cantidad)}</strong></li>`;
   }).join('');
   const r = resumenImportes(subtotal);
   const bloqueos = problemas(carrito);
-  caja.innerHTML = `<div class="split">
-    <div class="card">${filas}</div>
-    <div>
-      <div class="card pad sum"><h2>Resumen</h2>
+  const unidades = carrito.reduce((a, l) => a + l.cantidad, 0);
+  cuenta.textContent = `${unidades} ${unidades === 1 ? 'artículo' : 'artículos'} en tu bolsa`;
+  const falta = CONFIG.envioGratis - subtotal;
+  const pct = Math.max(0, Math.min(100, Math.round((subtotal / CONFIG.envioGratis) * 100)));
+  caja.innerHTML = `<div class="cp-grid">
+    <ul class="cp-lista${primera ? ' cp-primera' : ''}" aria-label="Productos del carrito">${filas}</ul>
+    <aside class="resumen cp-resumen" aria-labelledby="titulo-resumen">
+      <h2 id="titulo-resumen">Resumen</h2>
+      <div class="cp-envio ${r.envio ? '' : 'conseguido'}">
+        <p class="cp-envio-txt">${r.envio ? `Te faltan <strong>${euros(falta)}</strong> para el envío gratis.` : '<strong>Envío gratis conseguido.</strong> Tu pedido viaja sin coste.'}</p>
+        <div class="cp-meter" role="progressbar" aria-label="Progreso hacia el envío gratis" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-valuetext="${pct} % del importe para envío gratis">
+          <span class="cp-meter-relleno" data-pct="${pct}"></span></div>
+      </div>
+      <div class="sum">
         <div><span>Base imponible</span><span>${euros(r.base)}</span></div>
         <div><span>IVA (21 %)</span><span>${euros(r.iva)}</span></div>
         <div><span>Envío</span><span>${r.envio === 0 ? 'Gratis' : euros(r.envio)}</span></div>
         <div class="total"><span>Total</span><span>${euros(r.total)}</span></div>
-        <p class="small muted">${r.envio ? `Te faltan ${euros(CONFIG.envioGratis - subtotal)} para el envío gratis. ` : ''}Los cupones se aplican en el siguiente paso.</p>
       </div>
+      <p class="small cp-nota">Los cupones se aplican en el siguiente paso.</p>
       ${bloqueos.length
-        ? `<button class="btn btn-primary btn-bloque" disabled aria-describedby="motivo-bloqueo">Tramitar pedido</button>
+        ? `<button class="btn btn-primary btn-grande btn-bloque" disabled aria-describedby="motivo-bloqueo">Tramitar pedido</button>
            <div class="error-caja separada" id="motivo-bloqueo" role="alert"><div>No puedes tramitar el pedido todavía:</div>
              <ul>${bloqueos.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>
              <div>Ajusta las cantidades o elimina esos productos.</div></div>`
-        : '<a class="btn btn-primary btn-bloque" href="checkout.html">Tramitar pedido</a>'}
-    </div></div>`;
+        : '<a class="btn btn-primary btn-grande btn-bloque" href="checkout.html">Tramitar pedido</a>'}
+      <a class="cp-seguir" href="catalogo.html">← Seguir comprando</a>
+    </aside></div>`;
+  primera = false;
+  caja.querySelectorAll('[data-pct]').forEach((n) => n.style.setProperty('--pct', n.dataset.pct));
 }
 
 caja.addEventListener('click', (e) => {
@@ -113,8 +156,11 @@ caja.addEventListener('click', (e) => {
     if (nueva < 1 || (sube && (nueva > v.stock || otras + nueva > CONFIG.maxPorProducto))) return;
     l.cantidad = nueva;
   }
+  const foco = b.dataset.i !== undefined ? `[data-i="${b.dataset.i}"][data-d="${b.dataset.d}"]` : null;
   guardarCarrito(carrito);
   pintar();
+  // pintar() rehace el HTML: devolvemos el foco al control que se estaba usando
+  (foco && caja.querySelector(foco) || caja.querySelector('[data-quitar]') || caja.querySelector('.btn-bloque'))?.focus();
 });
 
 cargar();
