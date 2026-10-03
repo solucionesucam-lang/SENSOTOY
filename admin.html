@@ -27,6 +27,8 @@ let seleccionado = null, pagina = 0;
 let fCodigo = '', fEstado = '', fCliente = '';
 const el = {};   // contenedores del esqueleto
 
+const mensaje = (caja, texto) => { caja.innerHTML = texto ? `<p class="error-caja separada">${esc(texto)}</p>` : ''; };
+
 if (exigirSesion(usuario)) {
   if (usuario.rol !== 'admin') {
     caja.innerHTML = '<h1>Acceso restringido</h1><p class="muted">Solo la cuenta de administrador puede ver el back-office.</p>';
@@ -87,8 +89,6 @@ function esqueleto() {
     el[id] = document.getElementById(id);
   }
 }
-
-const mensaje = (caja, texto) => { caja.innerHTML = texto ? `<p class="error-caja separada">${esc(texto)}</p>` : ''; };
 
 async function cargarTodo() {
   mensaje(el['error-general'], '');
