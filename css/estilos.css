@@ -123,6 +123,7 @@ a.card:hover .photo img { transform: scale(1.06); }
 .row-envuelto { flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
 .pila { display: flex; flex-direction: column; gap: 22px; }
 .pila-s { display: flex; flex-direction: column; gap: 12px; }
+.mt-m { margin-top: 22px; }
 .tag { font-size: 13px; font-weight: 700; color: var(--ink3); }
 .badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: var(--r-pill); background: var(--mint); color: var(--mint-ink); }
 .st { display: inline-block; font-size: 13px; font-weight: 700; padding: 4px 11px; border-radius: var(--r-pill); white-space: nowrap; background: var(--grey); color: var(--grey-ink); }
