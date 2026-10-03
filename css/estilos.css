@@ -278,3 +278,24 @@ a.card.cat-1:hover, a.card.cat-2:hover, a.card.cat-3:hover, a.card.cat-4:hover {
   .btn:hover, a.card:hover, .dot:hover, .chip:hover, .pill:hover { transform: none; }
   a.card:hover .photo img { transform: none; }
 }
+
+/* ---------- Back-office (admin.html) ---------- */
+.solo-lector { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.admin-cab { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
+.admin-cab .opciones { margin: 0; }
+.tabla-admin { min-width: 640px; }
+.tabla-admin td.msg { min-width: 220px; max-width: 360px; word-break: break-word; }
+.input-reponer { width: 96px; }
+.celda-reponer { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.detalles-card { margin-top: 14px; padding: 14px 18px; }
+.detalles-card summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.detalles-card .scroll { margin-top: 10px; }
+.btn-fila { padding: 7px 14px; font-size: 14px; }
+.fila-pedido-btn { font-weight: 700; text-align: left; }
+tr[aria-selected="true"] td { background: var(--bg2); }
+.paginacion .small { min-width: 120px; text-align: center; }
+.estado-acciones { margin-top: 6px; }
+@media (max-width: 520px) {
+  .tabla-admin { min-width: 560px; }
+  .admin-cab .opciones .btn { flex: 1; }
+}
