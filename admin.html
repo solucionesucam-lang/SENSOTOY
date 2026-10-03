@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Back-office</title>
 </head>
@@ -12,113 +10,240 @@
 <main class="wrap" id="contenido"><p class="cargando">Cargando…</p></main>
 <script type="module">
 import { pintarMarco, exigirSesion, euros, esc, fecha, estadoBadge, ESTADOS, aviso } from './js/ui.js';
-import { todosLosPedidos, eventos, incidencias, cambiarEstado, resumenVentas, ventasPorProducto, stockBajo, todosLosEventos, transicionesPedido } from './js/datos.js';
+import { todosLosPedidos, eventos, incidencias, cambiarEstado, cambiarEstadoIncidencia, resumenVentas, ventasPorProducto,
+  todasLasVariantes, reponerStock, todosLosEventos, transicionesPedido } from './js/datos.js';
+
+const POR_PAGINA = 10;
+const STOCK_BAJO = 5;
+const MAX_REPOSICION = 500;
+const ESTADO_INCIDENCIA = { abierta: 'Abierta', en_curso: 'En curso', resuelta: 'Resuelta' };
+// Siguiente paso válido (lo valida también cambiar_estado_incidencia en SQL)
+const SIGUIENTE = { abierta: ['en_curso', 'Pasar a en curso'], en_curso: ['resuelta', 'Marcar resuelta'] };
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
-let pedidos = [], listaEventos = [], listaIncidencias = [], seleccionado = null;
-let resumen = null, ranking = [], bajo = [], transiciones = [];
+let pedidos = [], transiciones = [], variantes = [];
+let seleccionado = null, pagina = 0;
 let fCodigo = '', fEstado = '', fCliente = '';
+const el = {};   // contenedores del esqueleto
 
 if (exigirSesion(usuario)) {
   if (usuario.rol !== 'admin') {
     caja.innerHTML = '<h1>Acceso restringido</h1><p class="muted">Solo la cuenta de administrador puede ver el back-office.</p>';
   } else {
-    cargar();
+    esqueleto();
+    cargarTodo();
   }
 }
 
-async function cargar() {
-  try {
-    [pedidos, listaEventos, listaIncidencias, resumen, ranking, bajo, transiciones] = await Promise.all([todosLosPedidos(), eventos(40), incidencias(), resumenVentas(), ventasPorProducto(), stockBajo(), transicionesPedido()]);
-    if (!seleccionado && pedidos.length) seleccionado = pedidos[0].id;
-    pintar();
-  } catch (e) {
-    caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
-  }
-}
-
-function permitido(desde, hasta) {
-  return transiciones.some((t) => t.estado_desde === desde && t.estado_hasta === hasta);
-}
-
-function pintar() {
-  const d = pedidos.find((p) => p.id === seleccionado);
-  const c = fCodigo.toLowerCase(), q = fCliente.toLowerCase();
-  const visibles = pedidos.filter((p) => p.codigo.toLowerCase().includes(c) && (!fEstado || p.estado === fEstado)
-    && (!q || (p.perfiles?.email || '').toLowerCase().includes(q) || (p.perfiles?.nombre || '').toLowerCase().includes(q)));
-
+// El esqueleto se pinta UNA vez; cada sección tiene su contenedor
+function esqueleto() {
   caja.innerHTML = `
-    <div class="row" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:22px">
+    <div class="admin-cab">
       <div><h1>Back-office</h1><div class="muted">Consulta interna de pedidos, eventos e incidencias</div></div>
-      <div class="opciones"><button class="btn btn-ghost" id="exp-eventos">Exportar eventos (JSON)</button>
-        <button class="btn btn-ghost" id="exp-pedidos">Exportar pedidos (CSV)</button>
-        <button class="btn btn-ghost" id="recargar">Recargar</button></div>
+      <div class="opciones">
+        <button class="btn btn-ghost" type="button" id="exp-eventos">Exportar eventos (JSON)</button>
+        <button class="btn btn-ghost" type="button" id="exp-pedidos">Exportar pedidos (CSV)</button>
+        <button class="btn btn-ghost" type="button" id="recargar">Recargar</button>
+      </div>
     </div>
-    <div class="kpis">
-      <div class="card pad kpi"><span class="small muted">Pedidos (pagos aceptados)</span><b>${resumen.pedidos}</b></div>
-      <div class="card pad kpi"><span class="small muted">Facturación</span><b>${euros(resumen.facturacion)}</b></div>
-      <div class="card pad kpi"><span class="small muted">Ticket medio</span><b>${euros(resumen.ticket_medio)}</b></div>
-      <div class="card pad kpi"><span class="small muted">% Pagos rechazados</span><b>${resumen.pct_rechazados}%</b></div>
-    </div>
+    <div id="error-general" role="alert"></div>
+    <section aria-label="Indicadores"><div class="kpis" id="kpis"></div></section>
 
-    <h2 style="margin-top:36px">Productos más vendidos</h2>
-    <div class="card scroll"><table><thead><tr><th>Producto</th><th>Unidades</th><th>Importe</th></tr></thead><tbody>
-      ${ranking.map((r) => `<tr><td>${esc(r.producto)}</td><td>${r.unidades}</td><td>${euros(r.importe)}</td></tr>`).join('')
-        || '<tr><td colspan="3" class="muted">Sin ventas todavía.</td></tr>'}
-    </tbody></table></div>
+    <section aria-labelledby="t-ranking"><h2 class="titulo-seccion" id="t-ranking">Productos más vendidos</h2>
+      <div class="card scroll" id="ranking"></div></section>
 
-    <h2 style="margin-top:36px">Stock bajo</h2>
-    <div class="card scroll"><table><thead><tr><th>Producto</th><th>Variante</th><th>Stock</th><th>Edición</th></tr></thead><tbody>
-      ${bajo.map((v) => `<tr><td>${esc(v.productos?.nombre)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td>${v.stock}</td>
-        <td>${v.productos?.es_edicion_limitada ? '<span class="badge">Edición limitada</span>' : '—'}</td></tr>`).join('')
-        || '<tr><td colspan="4" class="muted">Sin variantes con stock bajo.</td></tr>'}
-    </tbody></table></div>
+    <section aria-labelledby="t-stock"><h2 class="titulo-seccion" id="t-stock">Stock bajo</h2>
+      <div id="stock-msg" role="alert"></div>
+      <div class="card scroll" id="stock"></div>
+      <details class="card detalles-card"><summary>Ver todas las variantes</summary>
+        <div class="scroll" id="stock-todas"></div></details></section>
 
-    <div class="opciones" style="margin-bottom:14px">
-      <input id="f-codigo" placeholder="Código (PED-2026-...)" value="${esc(fCodigo)}" style="flex:1;min-width:180px">
-      <select id="f-estado" style="flex:1;min-width:180px"><option value="">Todos</option>${Object.entries(ESTADOS).map(([k, [t]]) =>
-        `<option value="${k}" ${k === fEstado ? 'selected' : ''}>${t}</option>`).join('')}</select>
-      <input id="f-cliente" placeholder="Email o nombre de cliente" value="${esc(fCliente)}" style="flex:1;min-width:180px">
-    </div>
-
-    <div class="split">
-      <div class="card scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
-        ${visibles.map((p) => `<tr class="clic ${p.id === seleccionado ? 'sel' : ''}" data-id="${p.id}" tabindex="0">
-          <td><strong>${esc(p.codigo)}</strong></td><td>${esc(p.perfiles?.email)}</td><td>${fecha(p.creado_en)}</td>
-          <td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')
-          || '<tr><td colspan="5" class="muted">Sin resultados.</td></tr>'}
-      </tbody></table></div>
-      ${d ? `<div class="card pad">
-        <div class="row"><h2>Detalle</h2><span class="small muted">${esc(d.codigo)}</span></div>
-        <div class="sum">
-          <div><span>Cliente</span><span>${esc(d.perfiles?.nombre)}</span></div>
-          <div><span>Pago</span><span>${d.pagos.map((x) => `${x.metodo}${x.ultimos4 ? ' ···· ' + x.ultimos4 : ''} · ${x.resultado}`).join(', ') || '—'}</span></div>
-          ${d.lineas_pedido.map((l) => `<div class="small"><span>${esc(l.nombre_producto)} (${esc(l.descripcion_variante)}) × ${l.cantidad}</span><span>${euros(l.importe)}</span></div>`).join('')}
-          <div class="small"><span>Envío</span><span>${euros(d.gastos_envio)}</span></div>
-          <div class="total"><span>Total</span><span>${euros(d.total)}</span></div>
+    <section aria-labelledby="t-pedidos"><h2 class="titulo-seccion" id="t-pedidos">Pedidos</h2>
+      <div class="filtros" id="filtros">
+        <div><label for="f-codigo">Código</label><input id="f-codigo" placeholder="PED-2026-..." autocomplete="off"></div>
+        <div><label for="f-estado">Estado</label><select id="f-estado"><option value="">Todos</option>
+          ${Object.entries(ESTADOS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
+        <div><label for="f-cliente">Cliente</label><input id="f-cliente" placeholder="Email o nombre" autocomplete="off"></div>
+      </div>
+      <div class="split">
+        <div>
+          <div class="card scroll"><table class="tabla-admin"><caption class="solo-lector">Pedidos</caption>
+            <thead><tr><th scope="col">Pedido</th><th scope="col">Cliente</th><th scope="col">Fecha</th><th scope="col">Total</th><th scope="col">Estado</th></tr></thead>
+            <tbody id="pedidos-tbody"></tbody></table></div>
+          <div class="paginacion" id="paginacion"></div>
         </div>
-        <label style="margin-top:14px">Cambiar estado</label>
-        <div class="opciones">${Object.entries(ESTADOS).map(([k, [t]]) =>
-          `<button class="pill ${k === d.estado ? 'on' : ''}" style="font-size:13px;padding:7px 12px" data-estado="${k}"
-          ${permitido(d.estado, k) ? '' : 'disabled'}>${t}</button>`).join('')}</div>
-      </div>` : ''}
-    </div>
+        <div class="card pad" id="detalle" aria-live="polite"></div>
+      </div>
+    </section>
 
-    <h2 style="margin-top:36px">Últimos eventos registrados</h2>
-    <div class="card scroll"><table><thead><tr><th>#</th><th>Evento</th><th>Usuario</th><th>Pedido</th><th>Fecha</th><th>Datos</th></tr></thead><tbody>
-      ${listaEventos.slice(0, 40).map((e) => `<tr><td>${e.id}</td><td><strong>${esc(e.tipo)}</strong></td>
+    <section aria-labelledby="t-eventos"><h2 class="titulo-seccion" id="t-eventos">Últimos eventos registrados</h2>
+      <div class="card scroll" id="eventos"></div></section>
+
+    <section aria-labelledby="t-incid"><h2 class="titulo-seccion" id="t-incid">Incidencias y postventa</h2>
+      <div id="incid-msg" role="alert"></div>
+      <div class="card scroll" id="incidencias"></div></section>`;
+  for (const id of ['error-general', 'kpis', 'ranking', 'stock-msg', 'stock', 'stock-todas', 'pedidos-tbody', 'paginacion', 'detalle', 'eventos', 'incid-msg', 'incidencias']) {
+    el[id] = document.getElementById(id);
+  }
+}
+
+const mensaje = (caja, texto) => { caja.innerHTML = texto ? `<p class="error-caja separada">${esc(texto)}</p>` : ''; };
+
+async function cargarTodo() {
+  mensaje(el['error-general'], '');
+  try {
+    let resumen, ranking;
+    [pedidos, resumen, ranking, transiciones] = await Promise.all([todosLosPedidos(), resumenVentas(), ventasPorProducto(), transicionesPedido()]);
+    if (!pedidos.some((p) => p.id === seleccionado)) seleccionado = pedidos[0]?.id ?? null;
+    pintarKpis(resumen);
+    pintarRanking(ranking);
+    pintarPedidos();
+    pintarDetalle();
+  } catch (e) { mensaje(el['error-general'], e.message); }
+  await Promise.all([cargarStock(), cargarEventos(), cargarIncidencias()]);
+}
+
+// ---------- KPIs y ranking ----------
+function pintarKpis(r) {
+  el.kpis.innerHTML = `
+    <div class="card pad kpi"><span class="small muted">Pedidos (pagos aceptados)</span><b>${r.pedidos}</b></div>
+    <div class="card pad kpi"><span class="small muted">Facturación</span><b>${euros(r.facturacion)}</b></div>
+    <div class="card pad kpi"><span class="small muted">Ticket medio</span><b>${euros(r.ticket_medio)}</b></div>
+    <div class="card pad kpi"><span class="small muted">% Pagos rechazados</span><b>${r.pct_rechazados}%</b></div>`;
+}
+function pintarRanking(ranking) {
+  el.ranking.innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Producto</th><th scope="col">Unidades</th><th scope="col">Importe</th></tr></thead><tbody>
+    ${ranking.map((r) => `<tr><td>${esc(r.producto)}</td><td>${r.unidades}</td><td>${euros(r.importe)}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="muted">Sin ventas todavía.</td></tr>'}</tbody></table>`;
+}
+
+// ---------- Stock ----------
+async function cargarStock() {
+  try {
+    variantes = await todasLasVariantes();
+    pintarStock();
+  } catch (e) { mensaje(el['stock-msg'], e.message); }
+}
+
+const maxReponer = (v) => Math.min(MAX_REPOSICION, v.reponible_max ?? MAX_REPOSICION);
+
+function pintarStock() {
+  const bajo = variantes.filter((v) => v.stock <= STOCK_BAJO);
+  el.stock.innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Producto</th><th scope="col">Variante</th><th scope="col">Stock</th><th scope="col">Edición</th><th scope="col">Reponer</th></tr></thead><tbody>
+    ${bajo.map((v) => {
+      const max = maxReponer(v);
+      const nombre = `${v.producto} ${v.color} ${v.talla}`;
+      return `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td>${v.stock}</td>
+        <td>${v.es_edicion_limitada ? `<span class="badge">Edición limitada</span> <span class="small muted">(se pueden reponer ${max})</span>` : '—'}</td>
+        <td>${max < 1 ? '<span class="small muted">Tirada completa</span>' : `<div class="celda-reponer">
+          <label class="solo-lector" for="rep-${v.variante_id}">Unidades a reponer de ${esc(nombre)}</label>
+          <input class="input-reponer" type="number" id="rep-${v.variante_id}" min="1" max="${max}" value="1" inputmode="numeric">
+          <button class="btn btn-primary btn-fila" type="button" data-reponer="${v.variante_id}" aria-label="Reponer ${esc(nombre)}">Reponer</button></div>`}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="muted">Sin variantes con stock bajo.</td></tr>'}</tbody></table>`;
+
+  el['stock-todas'].innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Producto</th><th scope="col">Variante</th><th scope="col">SKU</th><th scope="col">Stock</th><th scope="col">Edición</th></tr></thead><tbody>
+    ${variantes.map((v) => `<tr><td>${esc(v.producto)}</td><td>${esc(v.color)} · ${esc(v.talla)}</td><td class="mono">${esc(v.sku)}</td><td>${v.stock}</td>
+      <td>${v.es_edicion_limitada ? 'Limitada' : '—'}</td></tr>`).join('')}</tbody></table>`;
+}
+
+async function reponer(boton) {
+  const id = Number(boton.dataset.reponer);
+  const campo = document.getElementById(`rep-${id}`);
+  const v = variantes.find((x) => x.variante_id === id);
+  const max = maxReponer(v);
+  const cantidad = Number(campo.value);
+  mensaje(el['stock-msg'], '');
+  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > max) {
+    mensaje(el['stock-msg'], `La cantidad debe ser un número entero entre 1 y ${max}.`);
+    campo.focus();
+    return;
+  }
+  boton.disabled = true;
+  try {
+    await reponerStock(id, cantidad);
+    aviso(`Stock repuesto: +${cantidad}`);
+    await Promise.all([cargarStock(), cargarEventos()]);
+  } catch (e) {
+    mensaje(el['stock-msg'], e.message);
+    boton.disabled = false;
+  }
+}
+
+// ---------- Pedidos (filtros + paginación en cliente) ----------
+const permitido = (desde, hasta) => transiciones.some((t) => t.estado_desde === desde && t.estado_hasta === hasta);
+
+function filtrados() {
+  const c = fCodigo.toLowerCase(), q = fCliente.toLowerCase();
+  return pedidos.filter((p) => p.codigo.toLowerCase().includes(c) && (!fEstado || p.estado === fEstado)
+    && (!q || (p.perfiles?.email || '').toLowerCase().includes(q) || (p.perfiles?.nombre || '').toLowerCase().includes(q)));
+}
+
+// Solo repinta el cuerpo de la tabla y la paginación
+function pintarPedidos() {
+  const lista = filtrados();
+  const paginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  pagina = Math.min(pagina, paginas - 1);
+  const visibles = lista.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
+  el['pedidos-tbody'].innerHTML = visibles.map((p) => `<tr class="clic" data-id="${p.id}" aria-selected="${p.id === seleccionado}">
+      <td><button class="link-btn sin-margen fila-pedido-btn" type="button" data-ver="${p.id}" aria-label="Ver detalle del pedido ${esc(p.codigo)}">${esc(p.codigo)}</button></td>
+      <td>${esc(p.perfiles?.email)}</td><td>${fecha(p.creado_en)}</td><td>${euros(p.total)}</td><td>${estadoBadge(p.estado)}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">Sin resultados.</td></tr>';
+  el.paginacion.innerHTML = `
+    <button class="btn btn-ghost btn-fila" type="button" data-pag="-1" ${pagina === 0 ? 'disabled' : ''}>Anterior</button>
+    <span class="small muted" aria-live="polite">Página ${pagina + 1} de ${paginas} · ${lista.length} pedidos</span>
+    <button class="btn btn-ghost btn-fila" type="button" data-pag="1" ${pagina >= paginas - 1 ? 'disabled' : ''}>Siguiente</button>`;
+}
+
+function pintarDetalle() {
+  const d = pedidos.find((p) => p.id === seleccionado);
+  if (!d) { el.detalle.innerHTML = '<p class="muted">Selecciona un pedido para ver su detalle.</p>'; return; }
+  el.detalle.innerHTML = `
+    <div class="row"><h3>Detalle</h3><span class="small muted">${esc(d.codigo)}</span></div>
+    <div class="sum">
+      <div><span>Cliente</span><span>${esc(d.perfiles?.nombre)}</span></div>
+      <div><span>Pago</span><span>${d.pagos.map((x) => `${esc(x.metodo)}${x.ultimos4 ? ' ···· ' + esc(x.ultimos4) : ''} · ${esc(x.resultado)}`).join(', ') || '—'}</span></div>
+      ${d.lineas_pedido.map((l) => `<div class="small"><span>${esc(l.nombre_producto)} (${esc(l.descripcion_variante)}) × ${l.cantidad}</span><span>${euros(l.importe)}</span></div>`).join('')}
+      <div class="small"><span>Envío</span><span>${Number(d.gastos_envio) === 0 ? 'Gratis' : euros(d.gastos_envio)}</span></div>
+      <div class="total"><span>Total</span><span>${euros(d.total)}</span></div>
+    </div>
+    <div class="subtitulo" id="t-estado">Cambiar estado</div>
+    <div class="opciones estado-acciones" role="group" aria-labelledby="t-estado">${Object.entries(ESTADOS).map(([k, t]) =>
+      `<button class="pill pill-peq ${k === d.estado ? 'on' : ''}" type="button" data-estado="${k}" ${k === d.estado ? 'aria-pressed="true"' : ''}
+      ${permitido(d.estado, k) ? '' : 'disabled'}>${t}</button>`).join('')}</div>`;
+}
+
+function seleccionar(id) {
+  seleccionado = id;
+  pintarPedidos();
+  pintarDetalle();
+}
+
+// ---------- Eventos ----------
+async function cargarEventos() {
+  try {
+    const lista = await eventos(40);
+    el.eventos.innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">#</th><th scope="col">Evento</th><th scope="col">Usuario</th><th scope="col">Pedido</th><th scope="col">Fecha</th><th scope="col">Datos</th></tr></thead><tbody>
+      ${lista.map((e) => `<tr><td>${e.id}</td><td><strong>${esc(e.tipo)}</strong></td>
         <td>${esc(e.perfiles?.email || 'anónimo (' + (e.sesion_id || '—') + ')')}</td><td>${esc(e.pedidos?.codigo || '—')}</td>
         <td>${fecha(e.creado_en)}</td><td class="mono">${esc(JSON.stringify(e.datos))}</td></tr>`).join('')
-        || '<tr><td colspan="6" class="muted">Sin eventos todavía.</td></tr>'}
-    </tbody></table></div>
+        || '<tr><td colspan="6" class="muted">Sin eventos todavía.</td></tr>'}</tbody></table>`;
+  } catch (e) { el.eventos.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`; }
+}
 
-    <h2 style="margin-top:36px">Incidencias y postventa</h2>
-    <div class="card scroll"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Pedido</th><th>Motivo</th><th>Mensaje</th><th>Estado</th></tr></thead><tbody>
-      ${listaIncidencias.map((i) => `<tr><td>${fecha(i.creado_en)}</td><td>${esc(i.perfiles?.email)}</td><td>${esc(i.pedidos?.codigo || '—')}</td>
-        <td>${esc(i.motivo)}</td><td>${esc(i.mensaje)}</td><td>${esc(i.estado)}</td></tr>`).join('')
-        || '<tr><td colspan="6" class="muted">Sin incidencias.</td></tr>'}
-    </tbody></table></div>`;
+// ---------- Incidencias ----------
+async function cargarIncidencias() {
+  try {
+    const lista = await incidencias();
+    el.incidencias.innerHTML = `<table class="tabla-admin"><thead><tr><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Pedido</th><th scope="col">Motivo</th><th scope="col">Mensaje</th><th scope="col">Estado</th><th scope="col">Acción</th></tr></thead><tbody>
+      ${lista.map((i) => {
+        const sig = SIGUIENTE[i.estado];
+        return `<tr><td>${fecha(i.creado_en)}</td><td>${esc(i.perfiles?.email)}</td><td>${esc(i.pedidos?.codigo || '—')}</td>
+          <td>${esc(i.motivo)}</td><td class="msg">${esc(i.mensaje)}</td><td>${esc(ESTADO_INCIDENCIA[i.estado] || i.estado)}</td>
+          <td>${sig ? `<button class="btn btn-ghost btn-fila" type="button" data-incidencia="${i.id}" data-a="${sig[0]}"
+            aria-label="${sig[1]}: incidencia ${i.id}">${sig[1]}</button>` : '<span class="small muted">Cerrada</span>'}</td></tr>`;
+      }).join('') || '<tr><td colspan="7" class="muted">Sin incidencias.</td></tr>'}</tbody></table>`;
+  } catch (e) { mensaje(el['incid-msg'], e.message); }
 }
 
 // Descarga un fichero generado en el navegador (funciona en GitHub Pages)
@@ -128,16 +253,30 @@ function descargar(nombre, contenido, tipo) {
   a.click(); URL.revokeObjectURL(url);
 }
 
+// ---------- Eventos de la página ----------
 caja.addEventListener('click', async (e) => {
+  const b = e.target.closest('button');
   const fila = e.target.closest('tr[data-id]');
-  if (fila) { seleccionado = Number(fila.dataset.id); pintar(); return; }
-  const b = e.target.closest('button'); if (!b) return;
+  if (!b) { if (fila) seleccionar(Number(fila.dataset.id)); return; }
 
-  if (b.dataset.estado) {
-    try { await cambiarEstado(seleccionado, b.dataset.estado); aviso('Estado actualizado'); await cargar(); }
+  if (b.dataset.ver) {
+    seleccionar(Number(b.dataset.ver));
+    document.querySelector(`button[data-ver="${b.dataset.ver}"]`)?.focus();
+  } else if (b.dataset.pag) {
+    pagina += Number(b.dataset.pag);
+    pintarPedidos();
+  } else if (b.dataset.estado) {
+    try { await cambiarEstado(seleccionado, b.dataset.estado); aviso('Estado actualizado'); await cargarTodo(); }
     catch (err) { aviso(err.message); }
+  } else if (b.dataset.reponer) {
+    await reponer(b);
+  } else if (b.dataset.incidencia) {
+    b.disabled = true;
+    mensaje(el['incid-msg'], '');
+    try { await cambiarEstadoIncidencia(Number(b.dataset.incidencia), b.dataset.a); aviso('Incidencia actualizada'); await cargarIncidencias(); }
+    catch (err) { mensaje(el['incid-msg'], err.message); b.disabled = false; }
   } else if (b.id === 'recargar') {
-    cargar();
+    cargarTodo();
   } else if (b.id === 'exp-eventos') {
     b.disabled = true;
     try {
@@ -149,23 +288,25 @@ caja.addEventListener('click', async (e) => {
     const filas = pedidos.map((p) => [p.codigo, p.perfiles?.email, p.creado_en, p.estado, p.subtotal, p.descuento,
       p.gastos_envio, p.total, p.pagos[0]?.metodo || '', p.pagos[0]?.resultado || '']);
     const csv = [cab, ...filas].map((f) => f.map((x) => `"${String(x ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
-    descargar('pedidos-sensotoys.csv', '\ufeff' + csv, 'text/csv');   // \ufeff: Excel abre bien las tildes
+    descargar('pedidos-sensotoys.csv', '﻿' + csv, 'text/csv');   // ﻿: Excel abre bien las tildes
   }
 });
+
+// Al teclear solo se repinta el cuerpo de la tabla y la paginación
 caja.addEventListener('input', (e) => {
-  const { id, value, selectionStart } = e.target;
+  const { id, value } = e.target;
   if (id === 'f-codigo') fCodigo = value;
   else if (id === 'f-estado') fEstado = value;
   else if (id === 'f-cliente') fCliente = value;
   else return;
-  pintar();
-  const el = document.getElementById(id);
-  el.focus();
-  if (id !== 'f-estado') el.setSelectionRange(selectionStart, selectionStart);
+  pagina = 0;
+  pintarPedidos();
 });
 caja.addEventListener('keydown', (e) => {
-  const fila = e.target.closest('tr[data-id]');
-  if (fila && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); seleccionado = Number(fila.dataset.id); pintar(); }
+  if (e.key === 'Enter' && e.target.classList?.contains('input-reponer')) {
+    e.preventDefault();
+    e.target.closest('tr').querySelector('button[data-reponer]')?.click();
+  }
 });
 </script>
 </body>
