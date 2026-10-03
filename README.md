@@ -50,18 +50,23 @@ En Supabase > SQL Editor, ejecuta los scripts de `sql/` en este orden exacto:
 5. `04_seguridad_y_funciones.sql`
 6. `05_maquina_estados_pedido.sql`
 7. `06_validar_cupon.sql`
-8. `08_metricas.sql`
-9. `09_correcciones.sql`
-10. `11_configuracion.sql`
-11. `12_estados_y_eventos.sql`
-12. `13_incidencias.sql`
-13. `14_stock.sql`
-14. `15_avance_automatico.sql`
-15. `16_metricas_y_destacados.sql`
+8. `07_evento_estado.sql`
+9. `08_metricas.sql`
+10. `09_correcciones.sql`
+11. `10_estados_e_incidencias.sql`
+12. `11_configuracion.sql`
+13. `12_estados_y_eventos.sql`
+14. `13_incidencias.sql`
+15. `14_stock.sql`
+16. `15_avance_automatico.sql`
+17. `16_metricas_y_destacados.sql`
+18. `pruebas.sql` (opcional; no deja datos, ver "Pruebas de la lógica")
 
-**No existen `07` ni `10`:** la numeración salta de 06 a 08 y de 09 a 11. Los scripts `11` a `16` son idempotentes (se pueden repetir sin problema). `01` a `06` y `08` se ejecutan una sola vez, en este orden; `09` también se puede repetir.
+La numeración es continua, de 01 a 16. `07` solo amplía el `CHECK` de `eventos.tipo` con los 8 tipos de evento y crea la vista `v_eventos_export`. `10` es un puente: define `cambiar_estado_pedido()` y `crear_incidencia()` con eventos, y `12` y `13` las sustituyen; si se relanza después de `12`, detecta `aplicar_cambio_estado()` y no pisa nada. Los scripts `07` y `10` a `16` son idempotentes (se pueden repetir sin problema). `01` a `06` y `08` se ejecutan una sola vez, en este orden; `09` también se puede repetir.
 
-Dependencias (según sus cabeceras): `03` necesita los usuarios ya creados; `04` va después de `01`, `02` y `03`; `05` después de `01` a `04`; `08` después de `01` a `04`; `11` después de `01` a `06`, `08` y `09`; `12` después de `11`; `13`, `14`, `15` y `16` después de `12`.
+**Si la base ya tenía el `07` y el `10` antiguos** (los de `main`, con función y `search_path = public`): basta ejecutar `07` y `10` nuevos (opcional) y después `11` a `16`. `12` y `13` sustituyen las funciones y el `CHECK` final queda con los 8 tipos.
+
+Dependencias (según sus cabeceras): `03` necesita los usuarios ya creados; `04` va después de `01`, `02` y `03`; `05` después de `01` a `04`; `07` después de `01` a `06` y antes de `08` y `09`; `08` después de `01` a `04`; `10` después de `09` y antes de `11`; `11` después de `01` a `06`, `08` y `09`; `12` después de `11`; `13`, `14`, `15` y `16` después de `12`.
 
 **Usuarios de prueba, antes del 03.** Créalos en Supabase > Authentication > Users > Add user > Create new user, marcando "Auto Confirm User" (lista en "Usuarios de prueba"). El trigger del esquema crea el perfil de cada uno. `03_datos_pedidos.sql` comprueba primero que existen los 5 usuarios: si falta alguno se detiene sin insertar nada. Después, con ellos, crea perfiles, pedidos, pagos, incidencias y eventos de ejemplo; debe ejecutarse una sola vez sobre una base recién creada.
 
@@ -134,7 +139,7 @@ Los saltos permitidos están en una tabla (`sql/05`). Toda la lógica de cambio 
 
 ## Eventos
 
-Se guardan en la tabla `eventos`. Tipos permitidos por el `CHECK` de `sql/12`:
+Se guardan en la tabla `eventos`. Tipos permitidos por el `CHECK` (`sql/07`, repetido en `sql/12`):
 
 | Evento | Quién lo dispara |
 |---|---|
