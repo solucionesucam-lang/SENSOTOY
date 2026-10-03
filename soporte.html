@@ -3,13 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Ayuda y postventa</title>
 </head>
 <body>
-<main class="wrap" style="max-width:720px">
+<main class="wrap wrap-estrecho">
   <h1>Ayuda y postventa</h1>
   <p class="muted">Cuéntanos qué ha pasado. La solicitud se guarda en la base de datos.</p>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
@@ -27,7 +25,7 @@ if (exigirSesion(usuario)) {
   const pedidos = await misPedidos().catch(() => []);
   const elegido = param('pedido');
   caja.innerHTML = `
-    <form id="form" class="card pad" style="display:flex;flex-direction:column;gap:12px" novalidate>
+    <form id="form" class="card pad pila-s" novalidate>
       <div><label for="pedido">Pedido</label><select id="pedido">
         <option value="">Consulta general (sin pedido)</option>
         ${pedidos.map((p) => `<option value="${p.id}" ${String(p.id) === elegido ? 'selected' : ''}>${esc(p.codigo)}</option>`).join('')}
@@ -35,10 +33,11 @@ if (exigirSesion(usuario)) {
       <div><label for="motivo">Motivo</label><select id="motivo">
         <option value="">Elige un motivo</option>
         ${Object.entries(MOTIVOS).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}
-      </select><div class="err" id="err-motivo"></div></div>
+      </select><div class="err" id="err-motivo"></div>
+        <p class="small muted">Solo «Producto defectuoso» y «Retraso en el envío» pasan el pedido a estado «Con incidencia». Con los demás motivos la solicitud se registra y el pedido no cambia.</p></div>
       <div><label for="mensaje">Descripción</label><textarea id="mensaje" rows="5" maxlength="1000"></textarea>
         <div class="err" id="err-mensaje"></div></div>
-      <div id="error-general" class="error-caja" style="display:none"></div>
+      <div id="error-general" class="error-caja" role="alert" hidden></div>
       <button class="btn btn-primary" id="enviar">Enviar solicitud</button>
     </form>`;
 
@@ -57,7 +56,7 @@ if (exigirSesion(usuario)) {
       aviso('Incidencia guardada');
     } catch (err) {
       const box = document.getElementById('error-general');
-      box.textContent = err.message; box.style.display = 'block';
+      box.textContent = err.message; box.hidden = false;
       boton.disabled = false;
     }
   });

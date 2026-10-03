@@ -68,6 +68,16 @@ export async function variantesPorId(ids) {
     .in('id', ids));
 }
 
+// Constantes de negocio (máximo por producto, envío...) que viven en la base de datos
+export async function configuracion() {
+  return comprobar(await supabase.rpc('obtener_configuracion'));
+}
+// Ids de productos destacados: ediciones limitadas y, después, los más vendidos
+export async function idsDestacados(limite = 4) {
+  const filas = comprobar(await supabase.rpc('productos_destacados', { p_limite: limite }));
+  return filas.map((f) => f.producto_id);
+}
+
 // ---------- Eventos de navegación ----------
 // No bloquea la página: si falla, solo se avisa en la consola.
 export async function registrarEvento(tipo, datos = {}) {
@@ -96,9 +106,11 @@ export async function validarCupon(codigo, subtotal) {
 export async function misPedidos() {
   const usuario = await usuarioActual();
   if (!usuario) return [];
-  let consulta = supabase.from('pedidos').select('id, codigo, estado, total, creado_en');
-  if (usuario.rol !== 'admin') consulta = consulta.eq('usuario_id', usuario.id);
-  return comprobar(await consulta.order('creado_en', { ascending: false }));
+  return comprobar(await supabase.from('pedidos').select('id, codigo, estado, total, creado_en')
+    .eq('usuario_id', usuario.id).order('creado_en', { ascending: false }));
+}
+export async function cancelarMiPedido(codigo) {
+  comprobar(await supabase.rpc('cancelar_mi_pedido', { p_codigo: codigo }));
 }
 export async function pedidoPorCodigo(codigo) {
   return comprobar(await supabase.from('pedidos')
@@ -145,14 +157,18 @@ export async function incidencias() {
 export async function cambiarEstado(pedidoId, estado) {
   comprobar(await supabase.rpc('cambiar_estado_pedido', { p_pedido_id: pedidoId, p_estado: estado }));
 }
+export async function cambiarEstadoIncidencia(id, estado) {
+  comprobar(await supabase.rpc('cambiar_estado_incidencia', { p_id: id, p_estado: estado }));
+}
 export async function resumenVentas() {
   return comprobar(await supabase.from('v_resumen_ventas').select('*').single());
 }
 export async function ventasPorProducto() {
   return comprobar(await supabase.from('v_ventas_por_producto').select('*').order('importe', { ascending: false }));
 }
-export async function stockBajo() {
-  return comprobar(await supabase.from('variantes')
-    .select('id, color, talla, stock, productos ( nombre, es_edicion_limitada, unidades_edicion )')
-    .lte('stock', 5).eq('activo', true).order('stock'));
+export async function todasLasVariantes() {
+  return comprobar(await supabase.from('v_stock_variantes').select('*').order('stock').order('variante_id'));
+}
+export async function reponerStock(varianteId, cantidad) {
+  return comprobar(await supabase.rpc('reponer_stock', { p_variante_id: varianteId, p_cantidad: cantidad }));
 }

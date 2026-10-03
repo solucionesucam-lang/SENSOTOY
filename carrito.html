@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
 <title>Sensotoys · Carrito</title>
 </head>
 <body>
 <main class="wrap">
- <h1>Mi carrito de juguetes</h1>
+  <div id="pasillo"></div>
+  <h1>Mi carrito de juguetes</h1>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, MAX_POR_PRODUCTO, ENVIO_GRATIS, colorSlug } from './js/ui.js';
+import { pintarMarco, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, CONFIG, configLista,
+         imgProducto, montarPasillo } from './js/ui.js';
 import { variantesPorId } from './js/datos.js';
 
 await pintarMarco();
+montarPasillo(document.getElementById('pasillo'), 'carrito');
 const caja = document.getElementById('contenido');
 let variantes = [];
 
 async function cargar() {
   try {
+    if (!configLista()) throw new Error('No se pudo cargar la configuración de la tienda.');
     // Precio y stock actuales: siempre desde la base de datos
     variantes = await variantesPorId(leerCarrito().map((l) => l.variante_id));
     lineasValidas(variantes);
@@ -30,6 +32,30 @@ async function cargar() {
   } catch (e) {
     caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`;
   }
+}
+
+const variante = (l) => variantes.find((x) => x.id === l.variante_id);
+
+// Motivos por los que no se puede tramitar (el servidor los vuelve a comprobar)
+function problemas(carrito) {
+  const lista = [];
+  for (const l of carrito) {
+    const v = variante(l);
+    if (l.cantidad > v.stock) {
+      lista.push(v.stock === 0
+        ? `«${v.productos.nombre}» (${v.color} · ${v.talla}) está agotado.`
+        : `«${v.productos.nombre}» (${v.color} · ${v.talla}): pides ${l.cantidad} y solo quedan ${v.stock}.`);
+    }
+  }
+  const porProducto = {};
+  for (const l of carrito) {
+    const p = variante(l).productos;
+    porProducto[p.slug] = { nombre: p.nombre, total: (porProducto[p.slug]?.total || 0) + l.cantidad };
+  }
+  for (const { nombre, total } of Object.values(porProducto)) {
+    if (total > CONFIG.maxPorProducto) lista.push(`«${nombre}»: máximo ${CONFIG.maxPorProducto} unidades por producto (tienes ${total}).`);
+  }
+  return lista;
 }
 
 function pintar() {
@@ -40,22 +66,20 @@ function pintar() {
   }
   let subtotal = 0;
   const filas = carrito.map((l, i) => {
-    const v = variantes.find((x) => x.id === l.variante_id);
+    const v = variante(l);
     subtotal += v.precio * l.cantidad;
     return `<div class="linea">
-      <div class="photo" style="height:64px;background:${v.color_hex}">
-        <img src="img/productos/${v.productos.slug}-${colorSlug(v.color)}.webp" alt="${esc(v.productos.nombre)}" loading="lazy"
-             style="width:100%;height:100%;object-fit:contain"
-             onerror="this.onerror=function(){this.replaceWith(Object.assign(document.createElement('span'),{textContent:'[Foto]'}))};this.src='img/productos/${v.productos.slug}.webp'"></div>
-      <div><a class="pname" href="producto.html?slug=${v.productos.slug}" style="color:var(--ink)">${esc(v.productos.nombre)}</a>
+      <div class="photo photo-linea" data-bg="${esc(v.color_hex)}">${imgProducto(v.productos.slug, v.color, v.productos.nombre)}</div>
+      <div><a class="pname pname-enlace" href="producto.html?slug=${encodeURIComponent(v.productos.slug)}">${esc(v.productos.nombre)}</a>
         <div class="small muted">${esc(v.color)} · Talla ${esc(v.talla)} · ${euros(v.precio)}/ud.</div>
         ${l.cantidad > v.stock ? `<div class="err">Solo quedan ${v.stock}</div>` : ''}
-        <button class="link-btn small" style="padding-left:0" data-quitar="${i}">Eliminar</button></div>
+        <button class="link-btn small sin-margen" data-quitar="${i}">Eliminar</button></div>
       <div class="qty"><button data-i="${i}" data-d="-1" aria-label="Quitar una">−</button>
         <span>${l.cantidad}</span><button data-i="${i}" data-d="1" aria-label="Añadir una">+</button></div>
       <strong>${euros(v.precio * l.cantidad)}</strong></div>`;
   }).join('');
   const r = resumenImportes(subtotal);
+  const bloqueos = problemas(carrito);
   caja.innerHTML = `<div class="split">
     <div class="card">${filas}</div>
     <div>
@@ -64,23 +88,29 @@ function pintar() {
         <div><span>IVA (21 %)</span><span>${euros(r.iva)}</span></div>
         <div><span>Envío</span><span>${r.envio === 0 ? 'Gratis' : euros(r.envio)}</span></div>
         <div class="total"><span>Total</span><span>${euros(r.total)}</span></div>
-        <p class="small muted">${r.envio ? `Te faltan ${euros(ENVIO_GRATIS - subtotal)} para el envío gratis. ` : ''}Los cupones se aplican en el siguiente paso.</p>
+        <p class="small muted">${r.envio ? `Te faltan ${euros(CONFIG.envioGratis - subtotal)} para el envío gratis. ` : ''}Los cupones se aplican en el siguiente paso.</p>
       </div>
-      <a class="btn btn-primary" style="width:100%;margin-top:14px" href="checkout.html">Tramitar pedido</a>
+      ${bloqueos.length
+        ? `<button class="btn btn-primary btn-bloque" disabled aria-describedby="motivo-bloqueo">Tramitar pedido</button>
+           <div class="error-caja separada" id="motivo-bloqueo" role="alert"><div>No puedes tramitar el pedido todavía:</div>
+             <ul>${bloqueos.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>
+             <div>Ajusta las cantidades o elimina esos productos.</div></div>`
+        : '<a class="btn btn-primary btn-bloque" href="checkout.html">Tramitar pedido</a>'}
     </div></div>`;
 }
 
 caja.addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
   const carrito = leerCarrito();
   if (b.dataset.quitar !== undefined) carrito.splice(Number(b.dataset.quitar), 1);
   else if (b.dataset.i !== undefined) {
     const l = carrito[Number(b.dataset.i)];
-    const v = variantes.find((x) => x.id === l.variante_id);
+    const v = variante(l);
     const nueva = l.cantidad + Number(b.dataset.d);
-    const otras = carrito.filter((x) => x !== l && variantes.find((y) => y.id === x.variante_id)?.productos.slug === v.productos.slug)
+    const otras = carrito.filter((x) => x !== l && variante(x)?.productos.slug === v.productos.slug)
       .reduce((a, x) => a + x.cantidad, 0);
-    if (nueva < 1 || nueva > v.stock || otras + nueva > MAX_POR_PRODUCTO) return;
+    const sube = nueva > l.cantidad;
+    if (nueva < 1 || (sube && (nueva > v.stock || otras + nueva > CONFIG.maxPorProducto))) return;
     l.cantidad = nueva;
   }
   guardarCarrito(carrito);

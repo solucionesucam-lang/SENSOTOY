@@ -1,20 +1,19 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css">
-<title>Sensotoys · Finalizar pedido</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/estilos.css">
+  <title>Sensotoys · Finalizar pedido</title>
 </head>
 <body>
 <main class="wrap">
+  <div id="pasillo"></div>
   <h1>Finalizar pedido</h1>
   <div id="contenido"><p class="cargando">Cargando…</p></div>
 </main>
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, ENVIO, ENVIO_GRATIS } from './js/ui.js';
+import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, montarPasillo, configLista, CONFIG } from './js/ui.js';
 import { variantesPorId, crearPedido, registrarEvento, validarCupon } from './js/datos.js';
 
 const usuario = await pintarMarco();
@@ -27,6 +26,10 @@ if (exigirSesion(usuario)) {
 }
 
 async function iniciar(carrito) {
+  if (!configLista()) {
+    caja.innerHTML = '<p class="error-caja">No se ha podido leer la configuración de la tienda. Recarga la página.</p>';
+    return;
+  }
   const variantes = await variantesPorId(carrito.map((l) => l.variante_id));
   carrito = lineasValidas(variantes);
   if (carrito.length === 0) {
@@ -38,103 +41,122 @@ async function iniciar(carrito) {
   registrarEvento('checkout.started', { lineas: carrito.length, subtotal });
 
   caja.innerHTML = `
-  <form id="form" class="split" novalidate>
-    <div style="display:flex;flex-direction:column;gap:22px">
-      <div class="card pad"><h2>Datos de envío</h2>
-        <div class="form2">
-          ${campo('nombre', 'Nombre y apellidos', usuario.nombre)}
-          ${campo('direccion', 'Dirección', '')}
-          ${campo('cp', 'Código postal', '', 'inputmode="numeric" maxlength="5"')}
-          ${campo('ciudad', 'Ciudad', '')}
-          ${campo('provincia', 'Provincia', '')}
-        </div>
-      </div>
-      <div class="card pad"><div class="row"><h2>Métodos de pago</h2><span class="badge">Método recomendado</span></div>
-        <div class="opciones">
-          <label class="chip on" style="margin:0"><input type="radio" name="metodo" value="tarjeta" checked style="width:auto"> Tarjeta</label>
-          <label class="chip" style="margin:0"><input type="radio" name="metodo" value="contrareembolso" style="width:auto"> Contra reembolso</label>
-        </div>
-        <div id="bloque-tarjeta">${campo('tarjeta', 'Número de tarjeta', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
-          <p class="small muted">Solo se guardan los 4 últimos dígitos.</p></div>
-      </div>
-    </div>
-    <div>
-      <div class="card pad">
-        <h2>Tu pedido</h2>
-        ${carrito.map((l) => { const v = variantes.find((x) => x.id === l.variante_id);
-          return `<div class="row small" style="padding:4px 0"><span>${esc(v.productos.nombre)} · ${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span><strong>${euros(v.precio * l.cantidad)}</strong></div>`; }).join('')}
-       
+    <form id="form" class="split" novalidate>
       <div>
-        <label for="cupon">Cupón (opcional)</label>
-        <div style="display:flex;gap:8px">
-          <input id="cupon" name="cupon" placeholder="BIENVENIDA10">
-          <button type="button" id="validar-cupon" class="btn">Validar</button>
+        <div class="card pad">
+          <h2>Datos de envío</h2>
+          <div class="form2">
+            ${campo('nombre', 'Nombre y apellidos', usuario.nombre, 'autocomplete="name"')}
+            ${campo('direccion', 'Dirección', '', 'autocomplete="street-address"')}
+            ${campo('cp', 'Código postal', '', 'inputmode="numeric" maxlength="5" autocomplete="postal-code"')}
+            ${campo('ciudad', 'Ciudad', '')}
+            ${campo('provincia', 'Provincia', '')}
+          </div>
         </div>
-        <div id="mensaje-cupon" class="small" style="margin-top:6px"></div>
-        <div class="err" id="err-cupon"></div>
-      </div>
-      
-        <div class="sum" style="margin-top:6px">
-          <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
-          <div id="fila-descuento" style="display:none"><span>Descuento</span><span id="importe-descuento"></span></div>
-          <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
-          <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
+        <div class="card pad mt-m">
+          <div class="row"><h2>Métodos de pago</h2><span class="badge">Método recomendado</span></div>
+          <div class="opciones">
+            <label class="chip chip-radio on"><input type="radio" name="metodo" value="tarjeta" checked> Tarjeta</label>
+            <label class="chip chip-radio"><input type="radio" name="metodo" value="contrareembolso"> Contra reembolso</label>
+          </div>
+          <div id="bloque-tarjeta">
+            ${campo('tarjeta', 'Número de tarjeta', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
+            <p class="small muted">Solo se guardan los 4 últimos dígitos.</p>
+          </div>
         </div>
-        <p class="small muted">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
       </div>
-      <div id="error-general" class="error-caja" style="display:none;margin-top:14px"></div>
-      <button class="btn btn-primary" id="pagar" style="width:100%;margin-top:14px">Confirmar y pagar</button>
-      <p class="small muted" style="text-align:center">No se realizará ningún cobro real</p>
-    </div>
-  </form>`;
+      <div>
+        <div class="card pad">
+          <h2>Tu pedido</h2>
+          ${carrito.map((l) => {
+            const v = variantes.find((x) => x.id === l.variante_id);
+            return `<div class="row small"><span>${esc(v.productos.nombre)} · ${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span><strong>${euros(v.precio * l.cantidad)}</strong></div>`;
+          }).join('')}
+          <div class="mt-m">
+            <label for="cupon">Cupón (opcional)</label>
+            <div class="fila-cupon">
+              <input id="cupon" name="cupon" placeholder="BIENVENIDA10" autocomplete="off">
+              <button type="button" id="validar-cupon" class="btn">Validar</button>
+            </div>
+            <div id="mensaje-cupon" class="msg-cupon small" role="status"></div>
+          </div>
+          <div class="sum mt-m">
+            <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
+            <div id="fila-descuento" hidden><span>Descuento</span><span id="importe-descuento"></span></div>
+            <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
+            <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
+          </div>
+          <p class="small muted">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
+        </div>
+        <div id="error-general" class="error-caja separada" role="alert" hidden></div>
+        <button class="btn btn-primary btn-bloque" id="pagar" type="submit">Confirmar y pagar</button>
+        <p class="small muted">No se realizará ningún cobro real</p>
+      </div>
+    </form>`;
 
   const form = document.getElementById('form');
-      const botonValidarCupon = document.getElementById('validar-cupon');
-      const mensajeCupon = document.getElementById('mensaje-cupon');
-      const inputCupon = document.getElementById('cupon');
+  const botonValidarCupon = document.getElementById('validar-cupon');
+  const mensajeCupon = document.getElementById('mensaje-cupon');
+  const inputCupon = document.getElementById('cupon');
+  const camposEnvio = ['nombre', 'direccion', 'cp', 'ciudad', 'provincia'];
 
-      // Misma regla que crear_pedido(): envío gratis según subtotal - descuento
-      function pintarTotales(descuento) {
-        const neto = subtotal - descuento;
-        const envio = neto >= ENVIO_GRATIS ? 0 : ENVIO;
-        document.getElementById('fila-descuento').style.display = descuento > 0 ? '' : 'none';
-        document.getElementById('importe-descuento').textContent = '−' + euros(descuento);
-        document.getElementById('importe-envio').textContent = envio ? euros(envio) : 'Gratis';
-        document.getElementById('importe-total').textContent = euros(neto + envio);
-      }
-      inputCupon.addEventListener('input', () => { pintarTotales(0); mensajeCupon.textContent = ''; });
-     
-  
-      botonValidarCupon.addEventListener('click', async () => {
-        const codigo = inputCupon.value.trim();
-        botonValidarCupon.disabled = true;
-        botonValidarCupon.textContent = 'Validando…';
-        mensajeCupon.textContent = '';
-    
-        try {
-          const resultado = await validarCupon(codigo, subtotal);
-    
-          mensajeCupon.textContent = resultado.mensaje;
-          mensajeCupon.style.color = resultado.valido ? '#18794e' : '#b42318';
-    
-          if (resultado.valido) {
-            inputCupon.value = resultado.codigo;
-          }
-          pintarTotales(resultado.valido ? Number(resultado.descuento) : 0);
-       } catch (error) {
-          console.error('Error al validar el cupón:', error);
-          mensajeCupon.textContent = 'No se ha podido validar el cupón. Inténtalo de nuevo.';
-          mensajeCupon.style.color = '#b42318';
-          pintarTotales(0);
-      } finally {
-          botonValidarCupon.disabled = false;
-          botonValidarCupon.textContent = 'Validar';
-        }
+  // Pasillo: "Datos de envío" no recarga la página, enfoca el primer campo
+  const pasillo = montarPasillo(document.getElementById('pasillo'), 'envio', {
+    navegar(paso) {
+      if (paso !== 'envio') return false;
+      form.elements.nombre.focus();
+      return true;
+    }
   });
+  const envioValido = () => {
+    const f = form.elements;
+    return f.nombre.value.trim().length >= 3 && f.direccion.value.trim().length >= 5
+      && /^[0-9]{5}$/.test(f.cp.value.trim()) && f.ciudad.value.trim() !== '' && f.provincia.value.trim() !== '';
+  };
+  const actualizarPasillo = () => pasillo.ir(envioValido() ? 'pago' : 'envio');
+  actualizarPasillo();
+
+  // Misma regla que crear_pedido(): envío gratis según subtotal - descuento
+  function pintarTotales(descuento) {
+    const neto = subtotal - descuento;
+    const envio = neto >= CONFIG.envioGratis ? 0 : CONFIG.gastosEnvio;
+    document.getElementById('fila-descuento').hidden = !(descuento > 0);
+    document.getElementById('importe-descuento').textContent = '−' + euros(descuento);
+    document.getElementById('importe-envio').textContent = envio ? euros(envio) : 'Gratis';
+    document.getElementById('importe-total').textContent = euros(neto + envio);
+  }
+  function ponerMensajeCupon(texto, valido) {
+    mensajeCupon.textContent = texto;
+    mensajeCupon.classList.toggle('valido', valido);
+    mensajeCupon.classList.toggle('invalido', !valido && texto !== '');
+  }
+  inputCupon.addEventListener('input', () => { pintarTotales(0); ponerMensajeCupon('', false); });
+
+  botonValidarCupon.addEventListener('click', async () => {
+    const codigo = inputCupon.value.trim();
+    botonValidarCupon.disabled = true;
+    botonValidarCupon.textContent = 'Validando…';
+    ponerMensajeCupon('', false);
+    try {
+      const resultado = await validarCupon(codigo, subtotal);
+      ponerMensajeCupon(resultado.mensaje, !!resultado.valido);
+      if (resultado.valido) inputCupon.value = resultado.codigo;
+      pintarTotales(resultado.valido ? Number(resultado.descuento) : 0);
+    } catch (error) {
+      console.error('Error al validar el cupón:', error);
+      ponerMensajeCupon('No se ha podido validar el cupón. Inténtalo de nuevo.', false);
+      pintarTotales(0);
+    } finally {
+      botonValidarCupon.disabled = false;
+      botonValidarCupon.textContent = 'Validar';
+    }
+  });
+
+  form.addEventListener('input', (e) => { if (camposEnvio.includes(e.target.name)) actualizarPasillo(); });
   form.addEventListener('change', (e) => {
     if (e.target.name !== 'metodo') return;
     form.querySelectorAll('label.chip').forEach((l) => l.classList.toggle('on', l.querySelector('input').checked));
-    document.getElementById('bloque-tarjeta').style.display = e.target.value === 'tarjeta' ? '' : 'none';
+    document.getElementById('bloque-tarjeta').hidden = e.target.value !== 'tarjeta';
   });
   form.addEventListener('submit', (e) => { e.preventDefault(); enviar(form, carrito); });
 }
@@ -175,7 +197,7 @@ async function enviar(form, carrito) {
 
   const boton = document.getElementById('pagar');
   const cajaError = document.getElementById('error-general');
-  boton.disabled = true; boton.textContent = 'Procesando…'; cajaError.style.display = 'none';
+  boton.disabled = true; boton.textContent = 'Procesando…'; cajaError.hidden = true;
   try {
     const r = await crearPedido({
       lineas: carrito,
@@ -185,10 +207,11 @@ async function enviar(form, carrito) {
       cupon: d.cupon
     });
     guardarCarrito([]);
+    try { sessionStorage.setItem('sensotoys_pedido_nuevo', r.codigo); } catch {}
     location.href = 'pedido.html?codigo=' + encodeURIComponent(r.codigo);
   } catch (err) {
     cajaError.textContent = err.message;   // mensaje que devuelve la base de datos
-    cajaError.style.display = 'block';
+    cajaError.hidden = false;
     boton.disabled = false; boton.textContent = 'Confirmar y pagar';
   }
 }
