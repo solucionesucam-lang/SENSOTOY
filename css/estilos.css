@@ -304,7 +304,7 @@ header.top .logo:not(:has(.logo-texto)) { font-family: var(--f-display); font-we
 .pie a { color: var(--pie-texto); text-decoration: none; background: linear-gradient(var(--rosa), var(--rosa)) left bottom / 0 2px no-repeat; transition: background-size var(--d-3) var(--curva-suave), color var(--d-2); padding-bottom: 2px; }
 .pie a:hover, .pie a:focus-visible { background-size: 100% 2px; color: var(--rosa); }
 .pie-nota p { font-size: var(--t--1); margin: 0; }
-.pie-marca { margin: 0; font-family: var(--f-display); font-weight: 560; font-size: min(26vw, 22rem); line-height: .8; letter-spacing: -.055em; white-space: nowrap; overflow: hidden; padding-bottom: .12em; text-align: center; color: var(--lavanda); user-select: none; }   /* decorativo (aria-hidden); lavanda sobre tinta 11,5 */
+.pie-marca { margin: 0; font-family: var(--f-display); font-weight: 560; font-size: min(24.5vw, 22rem); line-height: .8; letter-spacing: -.055em; white-space: nowrap; overflow: hidden; padding-bottom: .3em; margin-bottom: -.1em; text-align: center; color: var(--lavanda); user-select: none; }   /* decorativo (aria-hidden); lavanda sobre tinta 11,5 */
 .pie-forma { right: -4rem; top: -3rem; --tam: 18rem; color: var(--lavanda); opacity: .2; z-index: 0; }
 
 /* ---------- 9. Formas decorativas ---------- */
