@@ -1,16 +1,8 @@
 -- =====================================================================
 -- SENSOTOYS · Prototipo académico SIE
 -- 05_maquina_estados_pedido.sql — Qué cambios de estado están permitidos
---
--- Complementa a 04_seguridad_y_funciones.sql SIN modificarlo ni borrar
--- nada: solo añade una tabla nueva y vuelve a definir la función
--- cambiar_estado_pedido() con el mismo nombre y los mismos parámetros
--- (create or replace), así que js/datos.js y admin.html siguen
--- funcionando exactamente igual, sin tocarlos.
---
--- Ejecutar DESPUÉS de 01, 02, 03 y 04 (una sola vez).
---
--- Por qué hace falta:
+
+
 -- La función cambiar_estado_pedido() de 04 dejaba poner CUALQUIER
 -- estado a un pedido (por ejemplo, pasar uno "enviado" otra vez a
 -- "creado"). Esta tabla dice explícitamente qué saltos tienen sentido
