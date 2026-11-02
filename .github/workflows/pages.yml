@@ -1,0 +1,52 @@
+name: Publicar tienda y back-office
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backoffice/package-lock.json
+
+      - name: Compilar el back-office
+        working-directory: backoffice
+        run: |
+          npm ci
+          npm run build
+
+      - name: Montar el sitio (tienda en la raiz, back-office en /backoffice/)
+        run: |
+          mkdir _site
+          rsync -a --exclude='.git' --exclude='.github' --exclude='backoffice' --exclude='_site' ./ _site/
+          mkdir _site/backoffice
+          cp -r backoffice/dist/. _site/backoffice/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
