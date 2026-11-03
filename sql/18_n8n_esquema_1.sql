@@ -43,6 +43,14 @@ create schema n8n authorization n8n_svc;
 -- Que n8n busque sus tablas en su esquema
 alter role n8n_svc set search_path = n8n;
 
+-- n8n ejecuta "CREATE SCHEMA IF NOT EXISTS n8n" en cada arranque, y
+-- PostgreSQL comprueba el permiso CREATE sobre la base de datos ANTES de
+-- mirar si el esquema ya existe. Sin esto, n8n falla con
+-- "permission denied for database postgres".
+-- Solo permite crear esquemas nuevos: NO da acceso a public ni a las
+-- tablas del back-office (ver la comprobación de abajo).
+grant create on database postgres to n8n_svc;
+
 
 -- 3. Comprobación (debe devolver false en las dos columnas)
 select
