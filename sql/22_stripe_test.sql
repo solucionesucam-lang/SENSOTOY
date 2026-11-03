@@ -30,7 +30,6 @@ alter table public.pagos
     )
   );
 
-commit;
 -- ---------------------------------------------------------------------
 -- 2. Adaptación de crear_pedido() para Stripe.
 -- BORRADOR INCOMPLETO: no ejecutar.
@@ -252,3 +251,4 @@ revoke execute on function public.crear_pedido(jsonb, jsonb, text, text, text, t
   from public, anon, authenticated;
 grant execute on function public.crear_pedido(jsonb, jsonb, text, text, text, text)
   to authenticated;
+commit;
