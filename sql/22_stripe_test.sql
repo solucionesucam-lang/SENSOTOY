@@ -1,0 +1,7 @@
+-- SENSOTOYS · Integración de Stripe en entorno de pruebas
+-- PROPUESTA PENDIENTE DE REVISIÓN.
+-- No ejecutar en Supabase #1 sin revisión del responsable.
+--
+-- Objetivo:
+-- Crear pedidos con tarjeta pendientes de pago,
+-- conservando el contrato de eventos de integración.
