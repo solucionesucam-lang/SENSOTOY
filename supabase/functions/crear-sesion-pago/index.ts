@@ -93,8 +93,8 @@ Deno.serve(async (req: Request) => {
 
     const autorizacion = req.headers.get("Authorization");
 
-    exigir(
-      autorizacion?.startsWith("Bearer "),
+      exigir(
+      autorizacion !== null && autorizacion.startsWith("Bearer "),
       "Tienes que iniciar sesión.",
       401,
     );
