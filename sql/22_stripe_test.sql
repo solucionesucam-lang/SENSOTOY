@@ -6,28 +6,26 @@
 -- Crear pedidos con tarjeta pendientes de pago,
 -- conservando el contrato de eventos de integración.
 
+
 -- ---------------------------------------------------------------------
--- 1. Permitir pagos pendientes de Stripe sin ultimos4.
+-- 1. Permitir pagos Stripe sin ultimos4, también al confirmar el pago.
 --
--- REVISAR ANTES DE EJECUTAR:
--- Se espera que la restricción original se llame pagos_check.
--- Confirmar su nombre en Supabase #1.
+-- El responsable ha confirmado que la restricción original
+-- se llama pagos_check.
+-- Stripe gestiona los datos de la tarjeta.
 -- ---------------------------------------------------------------------
 
 begin;
 
 alter table public.pagos
-  drop constraint pagos_check;
+  drop constraint if exists pagos_check;
 
 alter table public.pagos
   add constraint pagos_tarjeta_ultimos4_check
   check (
     metodo <> 'tarjeta'
+    or proveedor = 'stripe_test'
     or ultimos4 is not null
-    or (
-      proveedor = 'stripe_test'
-      and resultado = 'pendiente'
-    )
   );
 
 -- ---------------------------------------------------------------------
