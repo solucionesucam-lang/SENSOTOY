@@ -1,0 +1,36 @@
+name: Comprobar funciones Stripe
+
+on:
+  push:
+    branches:
+      - ivanmartinezalcon-droid-patch-1
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/comprobar-stripe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  comprobar:
+    name: Comprobar TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar el código de esta rama
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Comprobar crear-sesion-pago
+        run: deno check supabase/functions/crear-sesion-pago/index.ts
+
+      - name: Comprobar stripe-webhook
+        if: ${{ !cancelled() }}
+        run: deno check supabase/functions/stripe-webhook/index.ts
