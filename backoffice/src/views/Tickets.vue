@@ -56,7 +56,7 @@ onMounted(cargar)
 
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-else-if="cargando && tickets.length === 0">Cargando tickets…</p>
-    <p v-else-if="visibles.length === 0">No hay tickets con ese filtro.</p>
+    <p v-else-if="visibles.length === 0">{{ filtro ? 'No hay tickets con ese estado.' : 'Todavía no hay tickets.' }}</p>
 
     <div v-if="visibles.length > 0" class="tabla-ancha">
       <table>

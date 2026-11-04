@@ -56,7 +56,7 @@ onMounted(cargar)
 
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-else-if="cargando && pedidos.length === 0">Cargando pedidos…</p>
-    <p v-else-if="visibles.length === 0">No hay pedidos con ese filtro.</p>
+    <p v-else-if="visibles.length === 0">{{ filtro ? 'No hay pedidos con ese estado.' : 'Todavía no hay pedidos.' }}</p>
 
     <div v-if="seleccionado" class="detalle">
       <h3>Líneas del pedido {{ seleccionado.codigo_tienda }}</h3>

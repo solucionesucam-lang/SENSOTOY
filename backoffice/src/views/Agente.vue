@@ -67,7 +67,7 @@ onMounted(cargar)
 
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-else-if="cargando && propuestas.length === 0">Cargando propuestas…</p>
-    <p v-else-if="visibles.length === 0">No hay propuestas del agente con ese filtro.</p>
+    <p v-else-if="visibles.length === 0">{{ filtro ? 'No hay propuestas del agente con ese estado.' : 'Todavía no hay propuestas del agente.' }}</p>
 
     <article v-for="p in visibles" :key="p.id" class="propuesta">
       <h3>
