@@ -10,225 +10,759 @@
 <body>
 <main class="wrap pagina-checkout" id="contenido-principal">
   <div id="pasillo"></div>
+
   <header class="cp-cab">
     <p class="seccion-num">Último tramo</p>
     <h1 class="cp-titulo">Finalizar <em>pedido</em></h1>
-    <p class="cp-cuenta">Cuéntanos dónde lo llevamos y cómo quieres pagar. Dos minutos y listo.</p>
+    <p class="cp-cuenta">
+      Cuéntanos dónde lo llevamos y cómo quieres pagar.
+      Dos minutos y listo.
+    </p>
   </header>
-  <div id="contenido"><p class="cargando">Cargando…</p></div>
+
+  <div id="contenido">
+    <p class="cargando">Cargando…</p>
+  </div>
 </main>
+
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, leerCarrito, guardarCarrito, lineasValidas, resumenImportes, montarPasillo, configLista, CONFIG, imgProducto } from './js/ui.js';
-import { variantesPorId, crearPedido, registrarEvento, validarCupon } from './js/datos.js';
+import {
+  pintarMarco,
+  exigirSesion,
+  euros,
+  esc,
+  leerCarrito,
+  guardarCarrito,
+  lineasValidas,
+  resumenImportes,
+  montarPasillo,
+  configLista,
+  CONFIG,
+  imgProducto
+} from './js/ui.js';
+
+import {
+  variantesPorId,
+  crearPedido,
+  crearSesionPago,
+  registrarEvento,
+  validarCupon
+} from './js/datos.js';
 
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 
+let enviando = false;
+let pedidoCreado = null;
+
 if (exigirSesion(usuario)) {
   const carrito = leerCarrito();
-  if (carrito.length === 0) location.href = 'carrito.html';
-  else iniciar(carrito).catch((e) => { caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`; });
+
+  if (carrito.length === 0) {
+    location.href = 'carrito.html';
+  } else {
+    iniciar(carrito).catch((error) => {
+      caja.innerHTML = `
+        <p class="error-caja">${esc(error.message)}</p>
+      `;
+    });
+  }
 }
 
 async function iniciar(carrito) {
   if (!configLista()) {
-    caja.innerHTML = '<p class="error-caja">No se ha podido leer la configuración de la tienda. Recarga la página.</p>';
+    caja.innerHTML = `
+      <p class="error-caja">
+        No se ha podido leer la configuración de la tienda.
+        Recarga la página.
+      </p>
+    `;
     return;
   }
-  const variantes = await variantesPorId(carrito.map((l) => l.variante_id));
+
+  const variantes = await variantesPorId(
+    carrito.map((linea) => linea.variante_id)
+  );
+
   carrito = lineasValidas(variantes);
+
   if (carrito.length === 0) {
-    caja.innerHTML = '<div class="vacio"><h2>Tu carrito ya no tiene <em>productos</em></h2><p>Los productos de tu carrito ya no están disponibles.</p><a class="btn btn-primary btn-grande" href="catalogo.html">Ir al catálogo</a></div>';
+    caja.innerHTML = `
+      <div class="vacio">
+        <h2>Tu carrito ya no tiene <em>productos</em></h2>
+        <p>Los productos de tu carrito ya no están disponibles.</p>
+        <a
+          class="btn btn-primary btn-grande"
+          href="catalogo.html"
+        >
+          Ir al catálogo
+        </a>
+      </div>
+    `;
     return;
   }
-  const subtotal = carrito.reduce((a, l) => a + variantes.find((v) => v.id === l.variante_id).precio * l.cantidad, 0);
-  const r = resumenImportes(subtotal);
-  registrarEvento('checkout.started', { lineas: carrito.length, subtotal });
+
+  const subtotal = carrito.reduce((acumulado, linea) => {
+    const variante = variantes.find(
+      (v) => v.id === linea.variante_id
+    );
+
+    return acumulado + variante.precio * linea.cantidad;
+  }, 0);
+
+  const resumen = resumenImportes(subtotal);
+
+  registrarEvento('checkout.started', {
+    lineas: carrito.length,
+    subtotal
+  });
 
   caja.innerHTML = `
     <form id="form" class="cp-grid" novalidate>
       <div class="cp-columna">
-        <section class="card cp-bloque" aria-labelledby="titulo-envio">
-          <h2 id="titulo-envio"><span class="cp-num" aria-hidden="true">1</span>Datos de <em>envío</em></h2>
+        <section
+          class="card cp-bloque"
+          aria-labelledby="titulo-envio"
+        >
+          <h2 id="titulo-envio">
+            <span class="cp-num" aria-hidden="true">1</span>
+            Datos de <em>envío</em>
+          </h2>
+
           <div class="form2 cp-form2">
-            ${campo('nombre', 'Nombre y apellidos', usuario.nombre, 'autocomplete="name"', 'cp-ancho')}
-            ${campo('direccion', 'Dirección', '', 'autocomplete="street-address"', 'cp-ancho')}
-            ${campo('cp', 'Código postal', '', 'inputmode="numeric" maxlength="5" autocomplete="postal-code"', 'cp-cp')}
-            ${campo('ciudad', 'Ciudad', '', 'autocomplete="address-level2"', 'cp-ciudad')}
-            ${campo('provincia', 'Provincia', '', 'autocomplete="address-level1"', 'cp-ancho')}
+            ${campo(
+              'nombre',
+              'Nombre y apellidos',
+              usuario.nombre,
+              'autocomplete="name"',
+              'cp-ancho'
+            )}
+
+            ${campo(
+              'direccion',
+              'Dirección',
+              '',
+              'autocomplete="street-address"',
+              'cp-ancho'
+            )}
+
+            ${campo(
+              'cp',
+              'Código postal',
+              '',
+              'inputmode="numeric" maxlength="5" autocomplete="postal-code"',
+              'cp-cp'
+            )}
+
+            ${campo(
+              'ciudad',
+              'Ciudad',
+              '',
+              'autocomplete="address-level2"',
+              'cp-ciudad'
+            )}
+
+            ${campo(
+              'provincia',
+              'Provincia',
+              '',
+              'autocomplete="address-level1"',
+              'cp-ancho'
+            )}
           </div>
         </section>
-        <section class="card cp-bloque" aria-labelledby="titulo-pago">
-          <div class="row cp-fila-titulo"><h2 id="titulo-pago"><span class="cp-num" aria-hidden="true">2</span>Métodos de <em>pago</em></h2><span class="badge">Método recomendado</span></div>
+
+        <section
+          class="card cp-bloque"
+          aria-labelledby="titulo-pago"
+        >
+          <div class="row cp-fila-titulo">
+            <h2 id="titulo-pago">
+              <span class="cp-num" aria-hidden="true">2</span>
+              Métodos de <em>pago</em>
+            </h2>
+            <span class="badge">Entorno de pruebas</span>
+          </div>
+
           <fieldset class="opciones cp-metodos">
-            <legend class="visualmente-oculto">Método de pago</legend>
-            <label class="chip chip-radio cp-metodo on"><input type="radio" name="metodo" value="tarjeta" checked>
-              <span class="cp-metodo-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 10h19M6.5 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-              <span class="cp-metodo-texto"><strong>Tarjeta</strong><small>Pago simulado al instante</small></span></label>
-            <label class="chip chip-radio cp-metodo"><input type="radio" name="metodo" value="contrareembolso">
-              <span class="cp-metodo-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" focusable="false"><path d="M3 8.5L12 4l9 4.5v8L12 20l-9-3.5z M3 8.5L12 13l9-4.5M12 13v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-              <span class="cp-metodo-texto"><strong>Contra reembolso</strong><small>Pagas al recibir el paquete</small></span></label>
+            <legend class="visualmente-oculto">
+              Método de pago
+            </legend>
+
+            <label class="chip chip-radio cp-metodo on">
+              <input
+                type="radio"
+                name="metodo"
+                value="tarjeta"
+                checked
+              >
+
+              <span class="cp-metodo-icono" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="26"
+                  height="26"
+                  focusable="false"
+                >
+                  <rect
+                    x="2.5"
+                    y="5"
+                    width="19"
+                    height="14"
+                    rx="3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    d="M2.5 10h19M6.5 15h4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+
+              <span class="cp-metodo-texto">
+                <strong>Tarjeta</strong>
+                <small>Stripe en modo de pruebas</small>
+              </span>
+            </label>
+
+            <label class="chip chip-radio cp-metodo">
+              <input
+                type="radio"
+                name="metodo"
+                value="contrareembolso"
+              >
+
+              <span class="cp-metodo-icono" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="26"
+                  height="26"
+                  focusable="false"
+                >
+                  <path
+                    d="M3 8.5L12 4l9 4.5v8L12 20l-9-3.5z M3 8.5L12 13l9-4.5M12 13v7"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+
+              <span class="cp-metodo-texto">
+                <strong>Contra reembolso</strong>
+                <small>Pagas al recibir el paquete</small>
+              </span>
+            </label>
           </fieldset>
+
           <div id="bloque-tarjeta" class="cp-tarjeta">
-            ${campo('tarjeta', 'Número de tarjeta', '4242 4242 4242 4242', 'inputmode="numeric" autocomplete="off"')}
-            <p class="small muted">Solo se guardan los 4 últimos dígitos.</p>
+            <p class="small muted">
+              Al continuar se abrirá Stripe para introducir
+              los datos de una tarjeta de pruebas.
+              No introduzcas una tarjeta real.
+            </p>
           </div>
         </section>
       </div>
-      <aside class="resumen cp-resumen" aria-labelledby="titulo-pedido">
+
+      <aside
+          class="resumen cp-resumen"
+          aria-labelledby="titulo-pedido"
+      >
         <h2 id="titulo-pedido">Tu pedido</h2>
-        <ul class="cp-items" tabindex="0" aria-label="Productos de tu pedido">
-          ${carrito.map((l) => {
-            const v = variantes.find((x) => x.id === l.variante_id);
-            return `<li class="cp-item">
-              <div class="foto-mini cp-item-foto" data-bg="${esc(v.color_hex)}">${imgProducto(v.productos.slug, v.color, v.productos.nombre)}<span class="cp-item-cant" aria-hidden="true">${l.cantidad}</span></div>
-              <div class="cp-item-txt"><span class="cp-item-nombre">${esc(v.productos.nombre)}</span>
-                <span class="small cp-item-det">${esc(v.color)} · ${esc(v.talla)} × ${l.cantidad}</span></div>
-              <strong class="cp-item-precio">${euros(v.precio * l.cantidad)}</strong></li>`;
+
+        <ul
+          class="cp-items"
+          tabindex="0"
+          aria-label="Productos de tu pedido"
+        >
+          ${carrito.map((linea) => {
+            const v = variantes.find(
+              (x) => x.id === linea.variante_id
+            );
+
+            return `
+              <li class="cp-item">
+                <div
+                  class="foto-mini cp-item-foto"
+                  data-bg="${esc(v.color_hex)}"
+                >
+                  ${imgProducto(
+                    v.productos.slug,
+                    v.color,
+                    v.productos.nombre
+                  )}
+                  <span
+                    class="cp-item-cant"
+                    aria-hidden="true"
+                  >
+                    ${linea.cantidad}
+                  </span>
+                </div>
+
+                <div class="cp-item-txt">
+                  <span class="cp-item-nombre">
+                    ${esc(v.productos.nombre)}
+                  </span>
+                  <span class="small cp-item-det">
+                    ${esc(v.color)} · ${esc(v.talla)}
+                    × ${linea.cantidad}
+                  </span>
+                </div>
+
+                <strong class="cp-item-precio">
+                  ${euros(v.precio * linea.cantidad)}
+                </strong>
+              </li>
+            `;
           }).join('')}
         </ul>
+
         <div class="cp-cupon">
           <label for="cupon">Cupón (opcional)</label>
+
           <div class="fila-cupon">
-            <input id="cupon" name="cupon" placeholder="BIENVENIDA10" autocomplete="off" aria-describedby="mensaje-cupon">
-            <button type="button" id="validar-cupon" class="btn btn-ghost">Validar</button>
+            <input
+              id="cupon"
+              name="cupon"
+              placeholder="BIENVENIDA10"
+              autocomplete="off"
+              aria-describedby="mensaje-cupon"
+            >
+            <button
+              type="button"
+              id="validar-cupon"
+              class="btn btn-ghost"
+            >
+              Validar
+            </button>
           </div>
-          <div id="mensaje-cupon" class="msg-cupon small" role="status"></div>
+
+          <div
+            id="mensaje-cupon"
+            class="msg-cupon small"
+            role="status"
+          ></div>
         </div>
+
         <div class="sum">
-          <div><span>Subtotal (IVA incl.)</span><span>${euros(r.subtotal)}</span></div>
-          <div id="fila-descuento" hidden><span>Descuento</span><span id="importe-descuento"></span></div>
-          <div><span>Envío</span><span id="importe-envio">${r.envio ? euros(r.envio) : 'Gratis'}</span></div>
-          <div class="total"><span>Total estimado</span><span id="importe-total">${euros(r.total)}</span></div>
+          <div>
+            <span>Subtotal (IVA incl.)</span>
+            <span>${euros(resumen.subtotal)}</span>
+          </div>
+
+          <div id="fila-descuento" hidden>
+            <span>Descuento</span>
+            <span id="importe-descuento"></span>
+          </div>
+
+          <div>
+            <span>Envío</span>
+            <span id="importe-envio">
+              ${resumen.envio ? euros(resumen.envio) : 'Gratis'}
+            </span>
+          </div>
+
+          <div class="total">
+            <span>Total estimado</span>
+            <span id="importe-total">
+              ${euros(resumen.total)}
+            </span>
+          </div>
         </div>
-        <p class="small cp-nota">Introduce el cupón y pulsa «Validar». El total definitivo se calcula al confirmar el pedido.</p>
-        <div id="error-general" class="error-caja separada" role="alert" hidden></div>
-        <button class="btn btn-primary btn-grande btn-bloque cp-pagar" id="pagar" type="submit">Confirmar y pagar</button>
-        <p class="small cp-nota cp-sin-cobro">No se realizará ningún cobro real</p>
+
+        <p class="small cp-nota">
+          Introduce el cupón y pulsa «Validar».
+          El total definitivo se calcula al crear el pedido.
+        </p>
+
+        <div
+          id="error-general"
+          class="error-caja separada"
+          role="alert"
+          hidden
+        ></div>
+
+        <button
+          class="btn btn-primary btn-grande btn-bloque cp-pagar"
+          id="pagar"
+          type="submit"
+        >
+          Continuar a Stripe
+        </button>
+
+        <p class="small cp-nota cp-sin-cobro">
+          Prototipo académico. No se realizará ningún cobro real.
+        </p>
       </aside>
-    </form>`;
+    </form>
+  `;
 
   const form = document.getElementById('form');
-  const botonValidarCupon = document.getElementById('validar-cupon');
-  const mensajeCupon = document.getElementById('mensaje-cupon');
+  const botonValidarCupon =
+    document.getElementById('validar-cupon');
+  const mensajeCupon =
+    document.getElementById('mensaje-cupon');
   const inputCupon = document.getElementById('cupon');
-  const camposEnvio = ['nombre', 'direccion', 'cp', 'ciudad', 'provincia'];
 
-  // Pasillo: "Datos de envío" no recarga la página, enfoca el primer campo
-  const pasillo = montarPasillo(document.getElementById('pasillo'), 'envio', {
-    navegar(paso) {
-      if (paso !== 'envio') return false;
-      form.elements.nombre.focus();
-      return true;
+  const camposEnvio = [
+    'nombre',
+    'direccion',
+    'cp',
+    'ciudad',
+    'provincia'
+  ];
+
+  const pasillo = montarPasillo(
+    document.getElementById('pasillo'),
+    'envio',
+    {
+      navegar(paso) {
+        if (paso !== 'envio') return false;
+        form.elements.nombre.focus();
+        return true;
+      }
     }
-  });
-  const envioValido = () => {
+  );
+
+  function envioValido() {
     const f = form.elements;
-    return f.nombre.value.trim().length >= 3 && f.direccion.value.trim().length >= 5
-      && /^[0-9]{5}$/.test(f.cp.value.trim()) && f.ciudad.value.trim() !== '' && f.provincia.value.trim() !== '';
-  };
-  const actualizarPasillo = () => pasillo.ir(envioValido() ? 'pago' : 'envio');
+
+    return f.nombre.value.trim().length >= 3 &&
+      f.direccion.value.trim().length >= 5 &&
+      /^[0-9]{5}$/.test(f.cp.value.trim()) &&
+      f.ciudad.value.trim() !== '' &&
+      f.provincia.value.trim() !== '';
+  }
+
+  function actualizarPasillo() {
+    pasillo.ir(envioValido() ? 'pago' : 'envio');
+  }
+
+  function actualizarBoton() {
+    if (enviando || pedidoCreado) return;
+
+    document.getElementById('pagar').textContent =
+      form.elements.metodo.value === 'tarjeta'
+        ? 'Continuar a Stripe'
+        : 'Confirmar pedido';
+  }
+
   actualizarPasillo();
 
-  // Misma regla que crear_pedido(): envío gratis según subtotal - descuento
+  // Misma regla que crear_pedido():
+  // envío gratis según subtotal menos descuento.
   function pintarTotales(descuento) {
     const neto = subtotal - descuento;
-    const envio = neto >= CONFIG.envioGratis ? 0 : CONFIG.gastosEnvio;
-    document.getElementById('fila-descuento').hidden = !(descuento > 0);
-    document.getElementById('importe-descuento').textContent = '−' + euros(descuento);
-    document.getElementById('importe-envio').textContent = envio ? euros(envio) : 'Gratis';
-    document.getElementById('importe-total').textContent = euros(neto + envio);
+    const envio = neto >= CONFIG.envioGratis
+      ? 0
+      : CONFIG.gastosEnvio;
+
+    document.getElementById('fila-descuento').hidden =
+      !(descuento > 0);
+
+    document.getElementById('importe-descuento').textContent =
+      '−' + euros(descuento);
+
+    document.getElementById('importe-envio').textContent =
+      envio ? euros(envio) : 'Gratis';
+
+    document.getElementById('importe-total').textContent =
+      euros(neto + envio);
   }
+
   function ponerMensajeCupon(texto, valido) {
     mensajeCupon.textContent = texto;
     mensajeCupon.classList.toggle('valido', valido);
-    mensajeCupon.classList.toggle('invalido', !valido && texto !== '');
+    mensajeCupon.classList.toggle(
+      'invalido',
+      !valido && texto !== ''
+    );
   }
-  inputCupon.addEventListener('input', () => { pintarTotales(0); ponerMensajeCupon('', false); });
+
+  inputCupon.addEventListener('input', () => {
+    pintarTotales(0);
+    ponerMensajeCupon('', false);
+  });
 
   botonValidarCupon.addEventListener('click', async () => {
-    const codigo = inputCupon.value.trim();
+    if (enviando || pedidoCreado) return;
+
+    const codigoCupon = inputCupon.value.trim();
+
     botonValidarCupon.disabled = true;
     botonValidarCupon.textContent = 'Validando…';
     ponerMensajeCupon('', false);
+
     try {
-      const resultado = await validarCupon(codigo, subtotal);
-      ponerMensajeCupon(resultado.mensaje, !!resultado.valido);
-      if (resultado.valido) inputCupon.value = resultado.codigo;
-      pintarTotales(resultado.valido ? Number(resultado.descuento) : 0);
+      const resultado = await validarCupon(
+        codigoCupon,
+        subtotal
+      );
+
+      ponerMensajeCupon(
+        resultado.mensaje,
+        !!resultado.valido
+      );
+
+      if (resultado.valido) {
+        inputCupon.value = resultado.codigo;
+      }
+
+      pintarTotales(
+        resultado.valido ? Number(resultado.descuento) : 0
+      );
     } catch (error) {
       console.error('Error al validar el cupón:', error);
-      ponerMensajeCupon('No se ha podido validar el cupón. Inténtalo de nuevo.', false);
+
+      ponerMensajeCupon(
+        'No se ha podido validar el cupón. Inténtalo de nuevo.',
+        false
+      );
+
       pintarTotales(0);
     } finally {
-      botonValidarCupon.disabled = false;
+      botonValidarCupon.disabled =
+        enviando || Boolean(pedidoCreado);
       botonValidarCupon.textContent = 'Validar';
     }
   });
 
-  form.addEventListener('input', (e) => { if (camposEnvio.includes(e.target.name)) actualizarPasillo(); });
-  form.addEventListener('change', (e) => {
-    if (e.target.name !== 'metodo') return;
-    form.querySelectorAll('label.chip').forEach((l) => l.classList.toggle('on', l.querySelector('input').checked));
-    document.getElementById('bloque-tarjeta').hidden = e.target.value !== 'tarjeta';
+  form.addEventListener('input', (evento) => {
+    if (camposEnvio.includes(evento.target.name)) {
+      actualizarPasillo();
+    }
   });
-  form.addEventListener('submit', (e) => { e.preventDefault(); enviar(form, carrito); });
+
+  form.addEventListener('change', (evento) => {
+    if (evento.target.name !== 'metodo') return;
+
+    form.querySelectorAll('label.chip').forEach((etiqueta) => {
+      etiqueta.classList.toggle(
+        'on',
+        etiqueta.querySelector('input').checked
+      );
+    });
+
+    document.getElementById('bloque-tarjeta').hidden =
+      evento.target.value !== 'tarjeta';
+
+    actualizarBoton();
+  });
+
+  form.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    enviar(form, carrito);
+  });
 }
 
-function campo(id, texto, valor, extra = '', clase = '') {
-  return `<div class="campo cp-campo ${clase}"><label for="${id}">${texto}</label>
-    <input id="${id}" name="${id}" value="${esc(valor)}" aria-describedby="err-${id}" aria-invalid="false" ${extra}><div class="err" id="err-${id}"></div></div>`;
+function campo(
+  id,
+  texto,
+  valor,
+  extra = '',
+  clase = ''
+) {
+  return `
+    <div class="campo cp-campo ${clase}">
+      <label for="${id}">${texto}</label>
+      <input
+        id="${id}"
+        name="${id}"
+        value="${esc(valor ?? '')}"
+        aria-describedby="err-${id}"
+        aria-invalid="false"
+        ${extra}
+      >
+      <div class="err" id="err-${id}"></div>
+    </div>
+  `;
 }
 
-// Validación en el navegador: solo para avisar rápido al usuario.
-// La validación que manda es la de la base de datos.
-function validar(d) {
+// Validación rápida en el navegador.
+// La validación definitiva sigue en la base de datos.
+function validar(datos) {
   const errores = {};
-  if (d.nombre.length < 3) errores.nombre = 'Escribe nombre y apellidos.';
-  if (d.direccion.length < 5) errores.direccion = 'Escribe una dirección.';
-  if (!/^[0-9]{5}$/.test(d.cp)) errores.cp = 'Deben ser 5 dígitos.';
-  if (!d.ciudad) errores.ciudad = 'Obligatorio.';
-  if (!d.provincia) errores.provincia = 'Obligatorio.';
-  if (d.metodo === 'tarjeta' && !/^[0-9]{16}$/.test(d.tarjeta.replace(/\s/g, ''))) errores.tarjeta = 'Deben ser 16 dígitos.';
+
+  if (datos.nombre.length < 3) {
+    errores.nombre = 'Escribe nombre y apellidos.';
+  }
+
+  if (datos.direccion.length < 5) {
+    errores.direccion = 'Escribe una dirección.';
+  }
+
+  if (!/^[0-9]{5}$/.test(datos.cp)) {
+    errores.cp = 'Deben ser 5 dígitos.';
+  }
+
+  if (!datos.ciudad) {
+    errores.ciudad = 'Obligatorio.';
+  }
+
+  if (!datos.provincia) {
+    errores.provincia = 'Obligatorio.';
+  }
+
   return errores;
 }
 
+function direccionPedido(codigo) {
+  return 'pedido.html?codigo=' + encodeURIComponent(codigo);
+}
+
 async function enviar(form, carrito) {
+  if (enviando) return;
+
+  // Si el pedido ya se creó pero falló la apertura de Stripe,
+  // no repetimos crearPedido(): abrimos ese mismo pedido.
+  if (pedidoCreado) {
+    location.assign(direccionPedido(pedidoCreado.codigo));
+    return;
+  }
+
   const f = form.elements;
-  const d = {
-    nombre: f.nombre.value.trim(), direccion: f.direccion.value.trim(), cp: f.cp.value.trim(),
-    ciudad: f.ciudad.value.trim(), provincia: f.provincia.value.trim(),
-    metodo: f.metodo.value, tarjeta: f.tarjeta.value, cupon: f.cupon.value.trim()
+
+  const datos = {
+    nombre: f.nombre.value.trim(),
+    direccion: f.direccion.value.trim(),
+    cp: f.cp.value.trim(),
+    ciudad: f.ciudad.value.trim(),
+    provincia: f.provincia.value.trim(),
+    metodo: f.metodo.value,
+    cupon: f.cupon.value.trim()
   };
-  form.querySelectorAll('.err').forEach((x) => (x.textContent = ''));
-  form.querySelectorAll('.mal').forEach((x) => x.classList.remove('mal'));
-  form.querySelectorAll('[aria-invalid="true"]').forEach((x) => x.setAttribute('aria-invalid', 'false'));
-  const errores = validar(d);
-  for (const [id, msg] of Object.entries(errores)) {
-    document.getElementById('err-' + id).textContent = msg;
+
+  form.querySelectorAll('.err').forEach((elemento) => {
+    elemento.textContent = '';
+  });
+
+  form.querySelectorAll('.mal').forEach((elemento) => {
+    elemento.classList.remove('mal');
+  });
+
+  form.querySelectorAll('[aria-invalid="true"]')
+    .forEach((elemento) => {
+      elemento.setAttribute('aria-invalid', 'false');
+    });
+
+  const errores = validar(datos);
+
+  for (const [id, mensaje] of Object.entries(errores)) {
+    document.getElementById('err-' + id).textContent =
+      mensaje;
+
     f[id].classList.add('mal');
     f[id].setAttribute('aria-invalid', 'true');
   }
-  if (Object.keys(errores).length) { form.querySelector('.mal').focus(); return; }
+
+  if (Object.keys(errores).length) {
+    form.querySelector('.mal').focus();
+    return;
+  }
 
   const boton = document.getElementById('pagar');
   const cajaError = document.getElementById('error-general');
-  boton.disabled = true; boton.textContent = 'Procesando…'; cajaError.hidden = true;
+
+  enviando = true;
+  boton.disabled = true;
+  boton.textContent = 'Creando pedido…';
+  cajaError.hidden = true;
+  cajaError.textContent = '';
+
   try {
-    const r = await crearPedido({
+    const resultado = await crearPedido({
       lineas: carrito,
-      envio: { nombre: d.nombre, direccion: d.direccion, cp: d.cp, ciudad: d.ciudad, provincia: d.provincia },
-      metodo: d.metodo,
-      tarjeta: d.metodo === 'tarjeta' ? d.tarjeta : null,
-      cupon: d.cupon
+
+      envio: {
+        nombre: datos.nombre,
+        direccion: datos.direccion,
+        cp: datos.cp,
+        ciudad: datos.ciudad,
+        provincia: datos.provincia
+      },
+
+      metodo: datos.metodo,
+      tarjeta: null,
+      cupon: datos.cupon
     });
+
+    if (
+      typeof resultado?.codigo !== 'string' ||
+      !resultado.codigo
+    ) {
+      throw new Error(
+        'No se ha recibido el código del pedido. Revisa «Mis pedidos» antes de volver a intentarlo.'
+      );
+    }
+
+    // Conservamos el código antes de abrir Stripe.
+    pedidoCreado = resultado;
+
+    // El pedido ya existe y sus productos están reservados.
+    // Un fallo posterior de Stripe no debe recrear la compra.
+    form.querySelectorAll('input').forEach((input) => {
+      input.disabled = true;
+    });
+
+    document.getElementById('validar-cupon').disabled = true;
+
     guardarCarrito([]);
-    try { sessionStorage.setItem('sensotoys_pedido_nuevo', r.codigo); } catch {}
-    location.href = 'pedido.html?codigo=' + encodeURIComponent(r.codigo);
-  } catch (err) {
-    cajaError.textContent = err.message;   // mensaje que devuelve la base de datos
+
+    try {
+      sessionStorage.setItem(
+        'sensotoys_pedido_nuevo',
+        resultado.codigo
+      );
+    } catch {}
+
+    if (datos.metodo === 'contrareembolso') {
+      location.assign(direccionPedido(resultado.codigo));
+      return;
+    }
+
+    boton.textContent = 'Abriendo Stripe…';
+
+    const sesion = await crearSesionPago(resultado.codigo);
+    const destino = new URL(sesion.url);
+
+    if (
+      destino.protocol !== 'https:' ||
+      destino.hostname !== 'checkout.stripe.com'
+    ) {
+      throw new Error('El enlace de pago no es válido.');
+    }
+
+    location.assign(destino.href);
+  } catch (error) {
+    enviando = false;
+    boton.disabled = false;
+
+    if (pedidoCreado) {
+      cajaError.textContent =
+        `El pedido ${pedidoCreado.codigo} ya está guardado. ` +
+        'No vuelvas a crear la compra. ' +
+        'Abre el pedido para consultar su estado o continuar el pago. ' +
+        (error?.message || '');
+
+      boton.textContent = 'Ver mi pedido';
+    } else {
+      cajaError.textContent =
+        (error?.message || 'No se pudo completar la solicitud.') +
+        ' Si se ha interrumpido la conexión, revisa «Mis pedidos» antes de repetir la compra.';
+
+      boton.textContent = datos.metodo === 'tarjeta'
+        ? 'Continuar a Stripe'
+        : 'Confirmar pedido';
+    }
+
     cajaError.hidden = false;
-    boton.disabled = false; boton.textContent = 'Confirmar y pagar';
   }
 }
 </script>
