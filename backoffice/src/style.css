@@ -21,3 +21,37 @@ button:disabled { opacity: .6; cursor: wait; }
 form { display: grid; gap: .5rem; max-width: 360px; }
 input { font: inherit; padding: .5rem; border: 1px solid var(--texto); border-radius: 6px; }
 .error { color: #9b1c1c; font-weight: 600; }
+/* Estilos comunes de las pantallas de listas */
+table { border-collapse: collapse; width: 100%; background: #fff; }
+caption { text-align: left; font-weight: 700; padding-bottom: .25rem; }
+th, td { border: 1px solid var(--borde); padding: .4rem .6rem; text-align: left; vertical-align: top; }
+.titulo { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+.acciones { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+select { font: inherit; padding: .4rem; border: 1px solid var(--texto); border-radius: 6px; }
+button.pequeno { padding: .2rem .7rem; font-size: .9rem; }
+.detalle { border: 1px solid var(--borde); border-radius: 10px; background: #fff; padding: 1rem; margin: 1rem 0; }
+.tabla-ancha { overflow-x: auto; }
+.estado { display: inline-block; padding: .1rem .6rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--borde); background: #fff; }
+.estado-enviado, .estado-aprobado, .estado-resuelta { background: #e3f1ea; border-color: #1d5c47; color: #14402f; }
+.estado-cancelado, .estado-rechazado { background: #f7e3e3; border-color: #9b1c1c; color: #7a1414; }
+.estado-incidencia, .estado-abierta, .estado-pendiente_revision { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
+.estado-en_curso { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
+.estado-en_curso { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
+
+/* Tarjetas de propuestas del agente */
+.propuesta { border: 1px solid var(--borde); border-radius: 10px; background: #fff; padding: 1rem; margin: 1rem 0; }
+.propuesta h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
+.propuesta dl { display: grid; grid-template-columns: 11rem 1fr; gap: .4rem 1rem; margin: .5rem 0; }
+.propuesta dt { font-weight: 700; }
+.propuesta dd { margin: 0; }
+pre { white-space: pre-wrap; background: #f4efe6; padding: .5rem; border-radius: 6px; overflow-x: auto; }
+@media (max-width: 600px) { .propuesta dl { grid-template-columns: 1fr; } }
+
+/* Tarjetas de propuestas del agente */
+.propuesta { border: 1px solid var(--borde); border-radius: 10px; background: #fff; padding: 1rem; margin: 1rem 0; }
+.propuesta h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
+.propuesta dl { display: grid; grid-template-columns: 11rem 1fr; gap: .4rem 1rem; margin: .5rem 0; }
+.propuesta dt { font-weight: 700; }
+.propuesta dd { margin: 0; }
+pre { white-space: pre-wrap; background: #f4efe6; padding: .5rem; border-radius: 6px; overflow-x: auto; }
+@media (max-width: 600px) { .propuesta dl { grid-template-columns: 1fr; } }
