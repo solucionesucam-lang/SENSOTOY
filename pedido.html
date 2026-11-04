@@ -1,174 +1,757 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="css/estilos.css">
-<script src="js/transiciones.js"></script>
-<title>Sensotoys · Pedido</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script src="js/transiciones.js"></script>
+  <title>Sensotoys · Pedido</title>
 </head>
 <body>
 <main class="wrap pagina-pedido">
   <div id="pasillo"></div>
-  <div id="contenido"><p class="cargando">Cargando…</p></div>
+  <div id="contenido">
+    <p class="cargando">Cargando…</p>
+  </div>
 </main>
+
 <script type="module">
-import { pintarMarco, exigirSesion, euros, esc, fecha, param, estadoBadge, aviso, montarPasillo, imgProducto, formaSVG } from './js/ui.js';
-import { pedidoPorCodigo, misPedidos, cancelarMiPedido, productos } from './js/datos.js';
+import {
+  pintarMarco,
+  exigirSesion,
+  euros,
+  esc,
+  fecha,
+  param,
+  estadoBadge,
+  aviso,
+  montarPasillo,
+  imgProducto,
+  formaSVG
+} from './js/ui.js';
+
+import {
+  pedidoPorCodigo,
+  misPedidos,
+  cancelarMiPedido,
+  productos,
+  crearSesionPago
+} from './js/datos.js';
 
 const ORDEN = ['creado', 'pagado', 'preparacion', 'enviado'];
-const PASO = { creado: 'Creado', pagado: 'Pagado', preparacion: 'En preparación', enviado: 'Enviado', cancelado: 'Cancelado', incidencia: 'Con incidencia' };
+
+const PASO = {
+  creado: 'Creado',
+  pagado: 'Pagado',
+  preparacion: 'En preparación',
+  enviado: 'Enviado',
+  cancelado: 'Cancelado',
+  incidencia: 'Con incidencia'
+};
 
 let catalogo = [];
+let catalogoCargado = false;
+let accionEnCurso = false;
+
 const usuario = await pintarMarco();
 const caja = document.getElementById('contenido');
 const codigo = param('codigo');
+const retornoStripe = param('stripe');
 
 if (exigirSesion(usuario)) {
-  try { codigo ? await detalle() : await lista(); }
-  catch (e) { caja.innerHTML = `<p class="error-caja">${esc(e.message)}</p>`; }
+  try {
+    codigo ? await detalle() : await lista();
+  } catch (error) {
+    caja.innerHTML = `
+      <p class="error-caja">${esc(error.message)}</p>
+    `;
+  }
 }
 
-// Sin código en la URL: lista de "Mis pedidos"
+// Sin código en la URL: lista de pedidos.
 async function lista() {
   const pedidos = await misPedidos();
-  caja.innerHTML = `<header class="ped-cab">
+
+  caja.innerHTML = `
+    <header class="ped-cab">
       <p class="seccion-num">Tu cuenta</p>
       <h1 class="ped-titulo">Mis <em>pedidos</em></h1>
-      ${pedidos.length ? `<p class="entradilla">${pedidos.length === 1 ? 'Tienes un pedido' : `Tienes ${pedidos.length} pedidos`}. Pulsa uno para ver su estado, sus productos y el pago.</p>` : ''}
+      ${pedidos.length ? `
+        <p class="entradilla">
+          ${pedidos.length === 1
+            ? 'Tienes un pedido'
+            : `Tienes ${pedidos.length} pedidos`}.
+          Pulsa uno para ver su estado, sus productos y el pago.
+        </p>
+      ` : ''}
     </header>
-    ${pedidos.length === 0 ? `<div class="vacio ped-vacio">${formaSVG(2, 'forma-fluye forma-lavanda')}<h2>Todavía no tienes pedidos</h2><p>Cuando compres algo, aparecerá aquí.</p><a class="btn btn-primary" href="catalogo.html">Ir al catálogo</a></div>` : `
-    <ul class="ped-lista">
-      ${pedidos.map((p, i) => `<li class="ped-fila-caja" data-revelar><a class="ped-fila tono-${i % 6}" href="pedido.html?codigo=${encodeURIComponent(p.codigo)}">
-        <span class="ped-fila-forma" aria-hidden="true">${formaSVG(i + 1, 'forma-quieta')}</span>
-        <span class="ped-fila-codigo"><span class="ped-etq">Pedido</span><span class="ped-codigo">${esc(p.codigo)}</span></span>
-        <span class="ped-fila-fecha"><span class="ped-etq">Fecha</span>${fecha(p.creado_en)}</span>
-        <span class="ped-fila-estado">${estadoBadge(p.estado)}</span>
-        <span class="ped-fila-total"><span class="ped-etq">Total</span><span class="ped-importe">${euros(p.total)}</span></span>
-        <span class="ped-flecha" aria-hidden="true">→</span>
-      </a></li>`).join('')}
-    </ul>`}`;
+
+    ${pedidos.length === 0 ? `
+      <div class="vacio ped-vacio">
+        ${formaSVG(2, 'forma-fluye forma-lavanda')}
+        <h2>Todavía no tienes pedidos</h2>
+        <p>Cuando compres algo, aparecerá aquí.</p>
+        <a class="btn btn-primary" href="catalogo.html">
+          Ir al catálogo
+        </a>
+      </div>
+    ` : `
+      <ul class="ped-lista">
+        ${pedidos.map((p, i) => `
+          <li class="ped-fila-caja" data-revelar>
+            <a
+              class="ped-fila tono-${i % 6}"
+              href="pedido.html?codigo=${encodeURIComponent(p.codigo)}"
+            >
+              <span class="ped-fila-forma" aria-hidden="true">
+                ${formaSVG(i + 1, 'forma-quieta')}
+              </span>
+
+              <span class="ped-fila-codigo">
+                <span class="ped-etq">Pedido</span>
+                <span class="ped-codigo">${esc(p.codigo)}</span>
+              </span>
+
+              <span class="ped-fila-fecha">
+                <span class="ped-etq">Fecha</span>
+                ${fecha(p.creado_en)}
+              </span>
+
+              <span class="ped-fila-estado">
+                ${estadoBadge(p.estado)}
+              </span>
+
+              <span class="ped-fila-total">
+                <span class="ped-etq">Total</span>
+                <span class="ped-importe">${euros(p.total)}</span>
+              </span>
+
+              <span class="ped-flecha" aria-hidden="true">→</span>
+            </a>
+          </li>
+        `).join('')}
+      </ul>
+    `}
+  `;
+}
+
+// No dependemos del orden en que lleguen los pagos relacionados.
+function ultimoPago(pagos = []) {
+  return pagos.reduce((ultimo, pago) => {
+    if (!ultimo) return pago;
+    return BigInt(pago.id) > BigInt(ultimo.id) ? pago : ultimo;
+  }, null);
+}
+
+function esStripe(pago) {
+  return pago?.proveedor === 'stripe_test' &&
+    pago?.metodo === 'tarjeta';
+}
+
+function esStripePendiente(pedido, pago) {
+  return pedido.estado === 'creado' &&
+    esStripe(pago) &&
+    pago.resultado === 'pendiente';
 }
 
 function mensajeEstado(estado, pago) {
   const rechazado = pago?.resultado === 'rechazado';
+
   switch (estado) {
     case 'cancelado':
-      return ['Pedido cancelado', 'El pedido se ha cancelado. Si tienes dudas, abre una incidencia.'];
+      return [
+        'Pedido cancelado',
+        'El pedido se ha cancelado. Si completaste un pago y tienes dudas sobre su devolución, abre una incidencia.'
+      ];
+
     case 'incidencia':
       return rechazado
-        ? ['Pago rechazado', 'La tarjeta ha devuelto un rechazo. El pedido se ha guardado con incidencia y no se ha descontado stock.']
-        : ['Pedido con incidencia', 'Hay una incidencia abierta sobre este pedido. Si necesitas ayuda, escríbenos desde Ayuda y postventa.'];
+        ? [
+            'Pago rechazado',
+            'El pago figura como rechazado. Consulta los detalles o escríbenos desde Ayuda y postventa.'
+          ]
+        : [
+            'Pedido con incidencia',
+            'Hay una incidencia abierta sobre este pedido. Si necesitas ayuda, escríbenos desde Ayuda y postventa.'
+          ];
+
     case 'enviado':
-      return ['Pedido enviado', 'Tu pedido ya está en camino.'];
+      return [
+        'Pedido enviado',
+        'Tu pedido ya está en camino.'
+      ];
+
     case 'preparacion':
-      return ['Pedido en preparación', 'Estamos preparando tu pedido para enviarlo.'];
+      return [
+        'Pedido en preparación',
+        'Estamos preparando tu pedido para enviarlo.'
+      ];
+
     case 'pagado':
-      return ['Pedido registrado', 'El pago se ha validado. No se ha realizado ningún cobro real.'];
+      return [
+        'Pago confirmado',
+        esStripe(pago)
+          ? 'El pago se ha confirmado en el entorno de pruebas de Stripe. No se ha realizado ningún cobro real.'
+          : 'El pago se ha validado. No se ha realizado ningún cobro real.'
+      ];
+
     default:
-      return ['Pedido registrado', pago?.resultado === 'pendiente'
-        ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
-        : 'El pedido se ha guardado.'];
+      if (esStripe(pago) && pago.resultado === 'pendiente') {
+        return [
+          'Pedido pendiente de pago',
+          'El pedido está guardado y sus productos están reservados. El pago todavía no figura como confirmado.'
+        ];
+      }
+
+      return [
+        'Pedido registrado',
+        pago?.metodo === 'contrareembolso' &&
+        pago?.resultado === 'pendiente'
+          ? 'El pedido se ha guardado y el cobro contra reembolso queda pendiente.'
+          : 'El pedido se ha guardado.'
+      ];
   }
 }
 
-// El pasillo con "Pedido confirmado" solo se ve justo después de comprar
-function pasilloConfirmado(p) {
+function textoPago(pago) {
+  if (!pago) return '—';
+
+  let metodo;
+
+  if (esStripe(pago)) {
+    metodo = 'Tarjeta · Stripe en pruebas';
+  } else if (pago.metodo === 'tarjeta') {
+    metodo = pago.ultimos4
+      ? `Tarjeta ···· ${pago.ultimos4}`
+      : 'Tarjeta';
+  } else {
+    metodo = 'Contra reembolso';
+  }
+
+  return `${metodo} · ${pago.resultado}`;
+}
+
+// La URL de retorno no confirma un pago.
+// Para Stripe solo celebramos cuando la base de datos refleja
+// un pago aceptado y un estado posterior a "creado".
+function pasilloConfirmado(pedido, pago) {
+  const pasillo = document.getElementById('pasillo');
+  pasillo.innerHTML = '';
+
   let nuevo = null;
+
   try {
     nuevo = sessionStorage.getItem('sensotoys_pedido_nuevo');
-    if (nuevo === p.codigo) sessionStorage.removeItem('sensotoys_pedido_nuevo');
   } catch {}
-  if (nuevo !== p.codigo) return false;
-  montarPasillo(document.getElementById('pasillo'), 'confirmado', { sinEnlaces: ['envio'] });
+
+  const stripeConfirmado =
+    esStripe(pago) &&
+    pago.resultado === 'aceptado' &&
+    ['pagado', 'preparacion', 'enviado'].includes(pedido.estado);
+
+  const pedidoRecienCreado =
+    nuevo === pedido.codigo &&
+    !['cancelado', 'incidencia'].includes(pedido.estado) &&
+    (!esStripe(pago) || stripeConfirmado);
+
+  const regresoConfirmado =
+    retornoStripe === 'retorno' &&
+    stripeConfirmado;
+
+  if (!pedidoRecienCreado && !regresoConfirmado) {
+    return false;
+  }
+
+  if (nuevo === pedido.codigo) {
+    try {
+      sessionStorage.removeItem('sensotoys_pedido_nuevo');
+    } catch {}
+  }
+
+  montarPasillo(pasillo, 'confirmado', {
+    sinEnlaces: ['envio']
+  });
+
   return true;
 }
 
-
-// Línea de tiempo: pedidos normales recorren creado, pagado, preparación y enviado;
-// cancelado e incidencia se salen del camino y se muestran como último paso
+// Línea de tiempo del pedido.
 function lineaTiempo(estado) {
-  const pasos = ORDEN.includes(estado) ? ORDEN : ['creado', estado];
+  const pasos = ORDEN.includes(estado)
+    ? ORDEN
+    : ['creado', estado];
+
   const actual = pasos.indexOf(estado);
-  return `<ol class="ped-tiempo" aria-label="Estado del pedido">${pasos.map((k, i) => {
-    const cls = i < actual ? 'hecho' : i === actual ? 'actual' : 'futuro';
-    const marca = i < actual ? '✓' : (k === 'cancelado' ? '×' : k === 'incidencia' ? '!' : i + 1);
-    return `<li class="ped-paso ped-paso-${cls} ped-paso-${k}"${i === actual ? ' aria-current="step"' : ''}><span class="ped-paso-num" aria-hidden="true">${marca}</span><span class="ped-paso-txt">${PASO[k]}${cls === 'futuro' ? '<span class="visualmente-oculto"> (pendiente)</span>' : ''}</span></li>`;
-  }).join('')}</ol>`;
+
+  return `
+    <ol class="ped-tiempo" aria-label="Estado del pedido">
+      ${pasos.map((k, i) => {
+        const cls = i < actual
+          ? 'hecho'
+          : i === actual
+            ? 'actual'
+            : 'futuro';
+
+        const marca = i < actual
+          ? '✓'
+          : k === 'cancelado'
+            ? '×'
+            : k === 'incidencia'
+              ? '!'
+              : i + 1;
+
+        return `
+          <li
+            class="ped-paso ped-paso-${cls} ped-paso-${k}"
+            ${i === actual ? 'aria-current="step"' : ''}
+          >
+            <span class="ped-paso-num" aria-hidden="true">
+              ${marca}
+            </span>
+            <span class="ped-paso-txt">
+              ${PASO[k] || esc(k)}
+              ${cls === 'futuro'
+                ? '<span class="visualmente-oculto"> (pendiente)</span>'
+                : ''}
+            </span>
+          </li>
+        `;
+      }).join('')}
+    </ol>
+  `;
 }
 
-function miniatura(l, i) {
-  const color = String(l.descripcion_variante ?? '').split('·')[0].trim();
-  const pr = catalogo.find((x) => x.nombre === l.nombre_producto);
-  const v = pr?.variantes?.find((x) => x.color === color) || pr?.variantes?.[0];
-  const img = pr && v ? imgProducto(pr.slug, v.color, l.nombre_producto) : '';
-  const real = img && !img.includes('sin-foto');
-  return `<div class="foto foto-mini ped-mini tono-${i % 6}">${real ? img : formaSVG(i + 2, 'forma-quieta')}</div>`;
+function miniatura(linea, i) {
+  const color = String(linea.descripcion_variante ?? '')
+    .split('·')[0]
+    .trim();
+
+  const producto = catalogo.find(
+    (x) => x.nombre === linea.nombre_producto
+  );
+
+  const variante =
+    producto?.variantes?.find((x) => x.color === color) ||
+    producto?.variantes?.[0];
+
+  const imagen = producto && variante
+    ? imgProducto(
+        producto.slug,
+        variante.color,
+        linea.nombre_producto
+      )
+    : '';
+
+  const real = imagen && !imagen.includes('sin-foto');
+
+  return `
+    <div class="foto foto-mini ped-mini tono-${i % 6}">
+      ${real ? imagen : formaSVG(i + 2, 'forma-quieta')}
+    </div>
+  `;
 }
 
-// Con código: detalle de un pedido (RLS impide ver pedidos ajenos)
+function bloquearAcciones(bloquear) {
+  accionEnCurso = bloquear;
+
+  caja.querySelectorAll('button[data-accion-pedido]')
+    .forEach((boton) => {
+      boton.disabled = bloquear;
+    });
+}
+
+function mostrarError(error) {
+  const destino = document.getElementById('error-pedido');
+  if (!destino) return;
+
+  destino.textContent =
+    error?.message || 'No se pudo completar la operación.';
+
+  destino.hidden = false;
+}
+
+function limpiarError() {
+  const destino = document.getElementById('error-pedido');
+  if (!destino) return;
+
+  destino.textContent = '';
+  destino.hidden = true;
+}
+
+// Con código: detalle de un pedido.
 async function detalle() {
   const p = await pedidoPorCodigo(codigo);
-  if (!p) { caja.innerHTML = '<div class="vacio ped-vacio"><h1 class="ped-titulo">Pedido no <em>encontrado</em></h1><p class="muted">No existe o no es tuyo.</p><a class="btn btn-primary" href="pedido.html">Mis pedidos</a></div>'; return; }
-  const celebra = pasilloConfirmado(p);
-  catalogo = await productos().catch(() => []);
-  const pago = p.pagos[0];
+
+  if (!p) {
+    document.getElementById('pasillo').innerHTML = '';
+
+    caja.innerHTML = `
+      <div class="vacio ped-vacio">
+        <h1 class="ped-titulo">
+          Pedido no <em>encontrado</em>
+        </h1>
+        <p class="muted">No existe o no es tuyo.</p>
+        <a class="btn btn-primary" href="pedido.html">
+          Mis pedidos
+        </a>
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!catalogoCargado) {
+    catalogo = await productos().catch(() => []);
+    catalogoCargado = true;
+  }
+
+  const pago = ultimoPago(p.pagos || []);
+  const stripePendiente = esStripePendiente(p, pago);
+  const celebra = pasilloConfirmado(p, pago);
   const [titular, texto] = mensajeEstado(p.estado, pago);
+
+  const antiguedad = Date.now() - Date.parse(p.creado_en);
+
+  const tieneSesion =
+    typeof pago?.referencia_externa === 'string' &&
+    pago.referencia_externa.startsWith('cs_test_');
+
+  const admiteInicio =
+    Number.isFinite(antiguedad) &&
+    antiguedad >= 0 &&
+    antiguedad < 20 * 60 * 1000;
+
+  // El servidor hará la comprobación definitiva de disponibilidad.
+  const mostrarContinuar =
+    stripePendiente && (tieneSesion || admiteInicio);
+
+  const avisoRetorno = stripePendiente
+    ? retornoStripe === 'retorno'
+      ? `
+        <p class="small cp-nota" role="status">
+          Has vuelto de Stripe, pero la confirmación todavía no
+          aparece en el pedido. Pulsa «Actualizar estado».
+          Si acabas de pagar, no crees otro pedido.
+        </p>
+      `
+      : retornoStripe === 'cancelado'
+        ? `
+          <p class="small cp-nota" role="status">
+            Has salido de la página de pago. Esto no cancela
+            automáticamente el pedido. Puedes consultar su estado,
+            continuar el pago si sigue disponible o cancelarlo.
+          </p>
+        `
+        : ''
+    : '';
+
   caja.innerHTML = `
-    <header class="ped-cab ped-cab-detalle ped-estado-${esc(p.estado)}${celebra ? ' ped-celebra' : ''}">
-      ${celebra ? `<div class="ped-celebracion" aria-hidden="true">${formaSVG(1, 'ped-b1 forma-rosa')}${formaSVG(4, 'ped-b2 forma-menta')}${formaSVG(6, 'ped-b3 forma-mantequilla')}
-        <svg class="ped-check" viewBox="0 0 64 64" focusable="false"><circle class="ped-check-aro" cx="32" cy="32" r="29"/><path class="ped-check-marca" d="M18 33l9 9 19-21"/></svg></div>` : ''}
-      <p class="seccion-num">${celebra ? 'Gracias por tu compra' : 'Pedido'} ${esc(p.codigo)}</p>
-      <h1 class="ped-titulo">${titular}</h1>
-      <p class="entradilla">${texto}</p>
+    <header
+      class="ped-cab ped-cab-detalle ped-estado-${esc(p.estado)}${celebra ? ' ped-celebra' : ''}"
+    >
+      ${celebra ? `
+        <div class="ped-celebracion" aria-hidden="true">
+          ${formaSVG(1, 'ped-b1 forma-rosa')}
+          ${formaSVG(4, 'ped-b2 forma-menta')}
+          ${formaSVG(6, 'ped-b3 forma-mantequilla')}
+
+          <svg
+            class="ped-check"
+            viewBox="0 0 64 64"
+            focusable="false"
+          >
+            <circle
+              class="ped-check-aro"
+              cx="32"
+              cy="32"
+              r="29"
+            />
+            <path
+              class="ped-check-marca"
+              d="M18 33l9 9 19-21"
+            />
+          </svg>
+        </div>
+      ` : ''}
+
+      <p class="seccion-num">
+        ${celebra ? 'Gracias por tu compra' : 'Pedido'}
+        ${esc(p.codigo)}
+      </p>
+
+      <h1 class="ped-titulo">${esc(titular)}</h1>
+      <p class="entradilla">${esc(texto)}</p>
+      ${avisoRetorno}
     </header>
+
     ${lineaTiempo(p.estado)}
+
     <div class="ped-cuerpo">
-      <section class="ped-productos" aria-labelledby="ped-h-prod">
-        <h2 id="ped-h-prod" class="ped-h2">Tu <em>pedido</em></h2>
+      <section
+        class="ped-productos"
+        aria-labelledby="ped-h-prod"
+      >
+        <h2 id="ped-h-prod" class="ped-h2">
+          Tu <em>pedido</em>
+        </h2>
+
         <ul class="ped-lineas">
-          ${p.lineas_pedido.map((l, i) => `<li class="ped-linea">${miniatura(l, i)}
-            <div class="ped-linea-info"><span class="pname">${esc(l.nombre_producto)}</span><span class="small muted">${esc(l.descripcion_variante)}</span></div>
-            <div class="ped-linea-cuenta"><span class="small muted">${l.cantidad} × ${euros(l.precio_unitario)}</span><span class="ped-linea-importe">${euros(l.importe)}</span></div></li>`).join('')}
+          ${(p.lineas_pedido || []).map((linea, i) => `
+            <li class="ped-linea">
+              ${miniatura(linea, i)}
+
+              <div class="ped-linea-info">
+                <span class="pname">
+                  ${esc(linea.nombre_producto)}
+                </span>
+                <span class="small muted">
+                  ${esc(linea.descripcion_variante)}
+                </span>
+              </div>
+
+              <div class="ped-linea-cuenta">
+                <span class="small muted">
+                  ${linea.cantidad} ×
+                  ${euros(linea.precio_unitario)}
+                </span>
+                <span class="ped-linea-importe">
+                  ${euros(linea.importe)}
+                </span>
+              </div>
+            </li>
+          `).join('')}
         </ul>
       </section>
+
       <div class="card pad sum pedido-resumen">
         <div class="small muted">Número de pedido</div>
         <div class="num-pedido">${esc(p.codigo)}</div>
-        <div><span>Estado</span>${estadoBadge(p.estado)}</div>
-        <div><span>Fecha</span><span>${fecha(p.creado_en)}</span></div>
-        <div><span>Subtotal</span><span>${euros(p.subtotal)}</span></div>
-        ${Number(p.descuento) ? `<div><span>Descuento (${esc(p.cupon_codigo)})</span><span>−${euros(p.descuento)}</span></div>` : ''}
-        <div><span>Base imponible</span><span>${euros(p.base_imponible)}</span></div>
-        <div><span>IVA (21 %)</span><span>${euros(p.iva)}</span></div>
-        <div><span>Envío</span><span>${Number(p.gastos_envio) ? euros(p.gastos_envio) : 'Gratis'}</span></div>
-        <div class="total"><span>Total</span><span>${euros(p.total)}</span></div>
-        <div><span>Pago</span><span>${pago ? (pago.metodo === 'tarjeta' ? `Tarjeta ···· ${esc(pago.ultimos4)}` : 'Contra reembolso') + ' · ' + esc(pago.resultado) : '—'}</span></div>
-        <div class="small muted aparte">Envío a: ${esc(p.envio_nombre)}, ${esc(p.envio_direccion)}, ${esc(p.envio_cp)} ${esc(p.envio_ciudad)} (${esc(p.envio_provincia)})</div>
+
+        <div>
+          <span>Estado</span>
+          ${estadoBadge(p.estado)}
+        </div>
+
+        <div>
+          <span>Fecha</span>
+          <span>${fecha(p.creado_en)}</span>
+        </div>
+
+        <div>
+          <span>Subtotal</span>
+          <span>${euros(p.subtotal)}</span>
+        </div>
+
+        ${Number(p.descuento) ? `
+          <div>
+            <span>Descuento (${esc(p.cupon_codigo)})</span>
+            <span>−${euros(p.descuento)}</span>
+          </div>
+        ` : ''}
+
+        <div>
+          <span>Base imponible</span>
+          <span>${euros(p.base_imponible)}</span>
+        </div>
+
+        <div>
+          <span>IVA (21 %)</span>
+          <span>${euros(p.iva)}</span>
+        </div>
+
+        <div>
+          <span>Envío</span>
+          <span>
+            ${Number(p.gastos_envio)
+              ? euros(p.gastos_envio)
+              : 'Gratis'}
+          </span>
+        </div>
+
+        <div class="total">
+          <span>Total</span>
+          <span>${euros(p.total)}</span>
+        </div>
+
+        <div>
+          <span>Pago</span>
+          <span>${esc(textoPago(pago))}</span>
+        </div>
+
+        <div class="small muted aparte">
+          Envío a:
+          ${esc(p.envio_nombre)},
+          ${esc(p.envio_direccion)},
+          ${esc(p.envio_cp)}
+          ${esc(p.envio_ciudad)}
+          (${esc(p.envio_provincia)})
+        </div>
       </div>
     </div>
-    <div class="opciones ped-acciones mt-m">
-      <a class="btn btn-primary" href="catalogo.html">Seguir comprando</a>
-      ${p.estado === 'creado' ? '<button class="btn btn-ghost" id="cancelar" type="button">Cancelar pedido</button>' : ''}
-      <a class="btn btn-ghost" href="soporte.html?pedido=${p.id}">Abrir una incidencia</a>
-      <a class="btn btn-ghost" href="pedido.html">Mis pedidos</a>
-    </div>
-    ${p.estado === 'creado' ? '<p class="small muted">Puedes cancelar el pedido mientras esté en «Creado». Se devuelve el stock y, si usaste un cupón de un solo uso, vuelve a quedar libre.</p>' : ''}
-    <div class="error-caja separada" id="error-cancelar" role="alert" hidden></div>`;
 
-  document.getElementById('cancelar')?.addEventListener('click', async (e) => {
-    if (!confirm('¿Seguro que quieres cancelar este pedido?')) return;
-    e.target.disabled = true;
-    try {
-      await cancelarMiPedido(p.codigo);
-      aviso('Pedido cancelado');
-      await detalle();
-    } catch (err) {
-      const caja = document.getElementById('error-cancelar');
-      caja.textContent = err.message; caja.hidden = false;
-      e.target.disabled = false;
-    }
-  });
+    <div class="opciones ped-acciones mt-m">
+      ${mostrarContinuar ? `
+        <button
+          class="btn btn-primary"
+          id="continuar-pago"
+          type="button"
+          data-accion-pedido
+        >
+          Continuar pago en Stripe
+        </button>
+      ` : ''}
+
+      ${esStripe(pago) ? `
+        <button
+          class="btn btn-ghost"
+          id="actualizar-estado"
+          type="button"
+          data-accion-pedido
+        >
+          Actualizar estado
+        </button>
+      ` : ''}
+
+      <a class="btn btn-primary" href="catalogo.html">
+        Seguir comprando
+      </a>
+
+      ${p.estado === 'creado' ? `
+        <button
+          class="btn btn-ghost"
+          id="cancelar"
+          type="button"
+          data-accion-pedido
+        >
+          Cancelar pedido
+        </button>
+      ` : ''}
+
+      <a
+        class="btn btn-ghost"
+        href="soporte.html?pedido=${encodeURIComponent(p.id)}"
+      >
+        Abrir una incidencia
+      </a>
+
+      <a class="btn btn-ghost" href="pedido.html">
+        Mis pedidos
+      </a>
+    </div>
+
+    ${p.estado === 'creado' ? `
+      <p class="small muted">
+        Puedes cancelar el pedido mientras esté en «Creado».
+        Se devuelve el stock y, si usaste un cupón de un solo uso,
+        vuelve a quedar libre.
+      </p>
+    ` : ''}
+
+    ${stripePendiente && !mostrarContinuar ? `
+      <p class="small muted">
+        Este pedido ya no permite iniciar un pago nuevo desde aquí.
+        Si no has pagado, puedes cancelarlo antes de volver a comprar.
+        Si ya pagaste, actualiza el estado o abre una incidencia;
+        no crees otro pedido para repetir el pago.
+      </p>
+    ` : ''}
+
+    <div
+      class="error-caja separada"
+      id="error-pedido"
+      role="alert"
+      hidden
+    ></div>
+  `;
+
+  document.getElementById('continuar-pago')
+    ?.addEventListener('click', async (evento) => {
+      if (accionEnCurso) return;
+
+      const boton = evento.currentTarget;
+      const textoOriginal = boton.textContent;
+
+      bloquearAcciones(true);
+      limpiarError();
+      boton.textContent = 'Abriendo Stripe…';
+
+      try {
+        // No crea un pedido nuevo: utiliza el código del existente.
+        const resultado = await crearSesionPago(p.codigo);
+
+        const destino = new URL(resultado.url);
+
+        if (
+          destino.protocol !== 'https:' ||
+          destino.hostname !== 'checkout.stripe.com'
+        ) {
+          throw new Error('El enlace de pago no es válido.');
+        }
+
+        location.assign(destino.href);
+      } catch (error) {
+        mostrarError(error);
+        boton.textContent = textoOriginal;
+        bloquearAcciones(false);
+      }
+    });
+
+  document.getElementById('actualizar-estado')
+    ?.addEventListener('click', async (evento) => {
+      if (accionEnCurso) return;
+
+      const boton = evento.currentTarget;
+
+      bloquearAcciones(true);
+      limpiarError();
+      boton.textContent = 'Actualizando…';
+
+      try {
+        // Solo consulta la base de datos; no confirma ningún pago.
+        await detalle();
+      } catch (error) {
+        mostrarError(error);
+        boton.textContent = 'Actualizar estado';
+      } finally {
+        bloquearAcciones(false);
+      }
+    });
+
+  document.getElementById('cancelar')
+    ?.addEventListener('click', async (evento) => {
+      if (accionEnCurso) return;
+
+      if (!confirm('¿Seguro que quieres cancelar este pedido?')) {
+        return;
+      }
+
+      const boton = evento.currentTarget;
+
+      bloquearAcciones(true);
+      limpiarError();
+      boton.textContent = 'Cancelando…';
+
+      let cancelado = false;
+
+      try {
+        await cancelarMiPedido(p.codigo);
+        cancelado = true;
+        aviso('Pedido cancelado');
+        await detalle();
+      } catch (error) {
+        if (cancelado) {
+          mostrarError(new Error(
+            'El pedido se ha cancelado, pero no se pudo actualizar la pantalla. Recarga la página para ver su estado.'
+          ));
+        } else {
+          mostrarError(error);
+        }
+
+        boton.textContent = 'Cancelar pedido';
+      } finally {
+        bloquearAcciones(false);
+      }
+    });
 }
 </script>
 </body>
