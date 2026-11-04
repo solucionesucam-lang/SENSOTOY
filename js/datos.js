@@ -94,7 +94,49 @@ export async function crearPedido({ lineas, envio, metodo, tarjeta, cupon }) {
     p_tarjeta: tarjeta || null, p_cupon: cupon || null, p_sesion: sesionId()
   }));
 }
+// Crea una sesión de Stripe para un pedido ya existente.
+// El servidor comprobará el propietario y el importe del pedido.
+export async function crearSesionPago(codigoPedido) {
+  if (typeof codigoPedido !== 'string' || !codigoPedido.trim()) {
+    throw new Error('Falta el código del pedido.');
+  }
 
+  const { data, error } = await supabase.functions.invoke(
+    'crear-sesion-pago',
+    {
+      body: {
+        codigo_pedido: codigoPedido.trim()
+      }
+    }
+  );
+
+  if (error) {
+    let mensaje = 'No se pudo abrir el pago. Inténtalo de nuevo.';
+
+    if (error.context instanceof Response) {
+      try {
+        const detalle = await error.context.json();
+        if (typeof detalle?.error === 'string') {
+          mensaje = detalle.error;
+        }
+      } catch {
+        // Conservamos el mensaje general si no hay una respuesta JSON.
+      }
+    }
+
+    throw new Error(mensaje);
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  if (typeof data?.url !== 'string' || !data.url) {
+    throw new Error('No se ha recibido el enlace de pago.');
+  }
+
+  return data;
+}
 export async function validarCupon(codigo, subtotal) {
   return comprobar(await supabase.rpc('validar_cupon', {
     p_codigo: codigo,
