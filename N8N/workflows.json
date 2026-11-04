@@ -1,0 +1,309 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sensotoys-eventos",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2cea23de-9407-40b3-b908-876ec93bad02",
+      "name": "Webhook",
+      "webhookId": "72136436-c8d2-4768-b9d9-944ed162b329",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hQTrtlLMxDsW0oZa",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body ?? {};\nconst errores = [];\nconst pedidos = ['order.created', 'payment.simulated', 'order.status_changed'];\nif (!b.evento_id) errores.push('falta evento_id');\nif (!b.tipo) errores.push('falta tipo');\nif (!b.cliente?.usuario_tienda_id) errores.push('falta cliente');\nif (pedidos.includes(b.tipo)) {\n  if (!b.pedido?.pedido_tienda_id) errores.push('falta pedido');\n  if (b.tipo !== 'order.status_changed' && !b.pedido?.lineas?.length) errores.push('pedido sin líneas');\n} else if (b.tipo === 'support.requested') {\n  if (!b.incidencia?.incidencia_tienda_id) errores.push('falta incidencia');\n} else {\n  errores.push('tipo no soportado: ' + b.tipo);\n}\nreturn [{ json: { valido: errores.length === 0, errores: errores.join('; '), evento: b } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "529c08d2-e191-4892-8d08-a96a88db6759",
+      "name": "Validar"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "896078cc-ea40-437f-a8f4-97af3c291695",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "b5b38d83-7763-447b-bf58-80d466c532df",
+      "name": "¿Válido?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pybmlynfbzqxlhkajodj.supabase.co/rest/v1/rpc/integrar_evento",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "=json",
+        "specifyBody": "json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ { \"p\": $json.evento } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -100
+      ],
+      "id": "ea4a207f-a873-4a62-b2e5-e234e0638069",
+      "name": "Integrar en back-office",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bSTY168j2hsg3ujd",
+          "name": "Supabase back-office"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pybmlynfbzqxlhkajodj.supabase.co/rest/v1/log_integracion",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "evento_id",
+              "value": "={{ $('Validar').first().json.evento.evento_id }}"
+            },
+            {
+              "name": "tipo_evento",
+              "value": "={{ $('Validar').first().json.evento.tipo }}"
+            },
+            {
+              "name": "resultado",
+              "value": "={{ $json.resultado ?? 'error' }}"
+            },
+            {
+              "name": "mensaje",
+              "value": "={{ $json.mensaje ?? $json.errores ?? $json.error?.message ?? 'error desconocido' }}"
+            },
+            {
+              "name": "payload",
+              "value": "={{ $('Validar').first().json.evento }}"
+            },
+            {
+              "name": "ejecucion_n8n",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        -200
+      ],
+      "id": "88e16b87-0d89-49fd-b4a0-7c91bf75ba5c",
+      "name": "Registrar log",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bSTY168j2hsg3ujd",
+          "name": "Supabase back-office"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6980d5c6-d9af-430a-bc44-e225016ccb09",
+              "leftValue": "{{ $json.tipo_evento }}",
+              "rightValue": "support.requested",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "5680054a-51db-4b74-bd5f-ca1a9ae63a10",
+              "leftValue": "{{ $json.resultado }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        -200
+      ],
+      "id": "22bcaf5e-a7a3-45a9-950a-40981bc77c6c",
+      "name": "Incidencia nueva"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -300
+      ],
+      "id": "efd2b0d0-adea-414b-a434-aae0bc15ca4b",
+      "name": "Agente (P4)"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar": {
+      "main": [
+        [
+          {
+            "node": "¿Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Válido?": {
+      "main": [
+        [
+          {
+            "node": "Integrar en back-office",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Integrar en back-office": {
+      "main": [
+        [
+          {
+            "node": "Registrar log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar log": {
+      "main": [
+        [
+          {
+            "node": "Incidencia nueva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incidencia nueva": {
+      "main": [
+        [
+          {
+            "node": "Agente (P4)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c0c1c97a021c64dd2464ae6d533d98728645890b90522e7fb65cad1912486d62"
+  }
+}
