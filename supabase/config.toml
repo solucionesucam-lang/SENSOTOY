@@ -1,0 +1,11 @@
+# SENSOTOYS · Configuración de Edge Functions
+# No contiene claves ni secretos.
+#
+# Guardar este archivo no modifica las funciones ya desplegadas.
+# La configuración deberá aplicarse y comprobarse al desplegar.
+
+[functions.crear-sesion-pago]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
