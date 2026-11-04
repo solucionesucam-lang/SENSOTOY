@@ -36,7 +36,6 @@ button.pequeno { padding: .2rem .7rem; font-size: .9rem; }
 .estado-cancelado, .estado-rechazado { background: #f7e3e3; border-color: #9b1c1c; color: #7a1414; }
 .estado-incidencia, .estado-abierta, .estado-pendiente_revision { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
 .estado-en_curso { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
-.estado-en_curso { background: #fbf0d9; border-color: #8a5a00; color: #5e3d00; }
 
 /* Tarjetas de propuestas del agente */
 .propuesta { border: 1px solid var(--borde); border-radius: 10px; background: #fff; padding: 1rem; margin: 1rem 0; }
@@ -47,11 +46,6 @@ button.pequeno { padding: .2rem .7rem; font-size: .9rem; }
 pre { white-space: pre-wrap; background: #f4efe6; padding: .5rem; border-radius: 6px; overflow-x: auto; }
 @media (max-width: 600px) { .propuesta dl { grid-template-columns: 1fr; } }
 
-/* Tarjetas de propuestas del agente */
-.propuesta { border: 1px solid var(--borde); border-radius: 10px; background: #fff; padding: 1rem; margin: 1rem 0; }
-.propuesta h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
-.propuesta dl { display: grid; grid-template-columns: 11rem 1fr; gap: .4rem 1rem; margin: .5rem 0; }
-.propuesta dt { font-weight: 700; }
-.propuesta dd { margin: 0; }
-pre { white-space: pre-wrap; background: #f4efe6; padding: .5rem; border-radius: 6px; overflow-x: auto; }
-@media (max-width: 600px) { .propuesta dl { grid-template-columns: 1fr; } }
+/* Login centrado */
+.login { max-width: 360px; margin-top: 4rem; text-align: center; }
+.login form { max-width: none; text-align: left; }
